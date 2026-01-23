@@ -1,11 +1,11 @@
-import Navbar from "@/components/custom/navbar";
-import UploaderPage from "@/components/custom/uploaderpage";
+import Navbar from "@/components/layout/navbar"
+import { UploadForm } from "@/components/upload/upload-form"
 
-export default function Home() {
+export default function HomePage() {
   return (
-    <div className="flex flex-col gap-20">
-      <Navbar/>
-      <UploaderPage/>
+    <div className="flex flex-col gap-16">
+      <Navbar />
+      <UploadForm />
     </div>
-  );
+  )
 }
