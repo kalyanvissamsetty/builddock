@@ -1,11 +1,13 @@
-import Navbar from "@/components/layout/navbar"
-import { UploadForm } from "@/components/upload/upload-form"
+import Navbar from "../components/navbar";
+import BuildDashboard from "@/components/dashboard/build-dashboard";
 
 export default function HomePage() {
   return (
-    <div className="flex flex-col gap-16">
+    <div className="min-h-screen">
       <Navbar />
-      <UploadForm />
+      <main className="mx-auto max-w-7xl px-4 py-8">
+        <BuildDashboard />
+      </main>
     </div>
-  )
+  );
 }
