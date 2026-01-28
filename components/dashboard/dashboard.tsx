@@ -1,0 +1,250 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { ProjectSelect } from "../upload/project-select";
+import { EnvironmentSelect } from "../upload/env-select";
+import { FileDropzone } from "../upload/file-dropzone";
+
+import { apiFetch } from "../lib/api";
+import { env } from "process";
+import { VersionSelect } from "../upload/version-select";
+import { UploadSuccess } from "../upload/dialog/UploadSuccess";
+
+export type Project = {
+  id: number;
+  name: string;
+  slug: string;
+  createdAt: string;
+};
+export type Environment = {
+  id: number;
+  name: string;
+  slug: string;
+  projectId: number;
+  createdAt: string;
+};
+export type Version = {
+  id: number;
+  name: string;
+  environmentId: number;
+  s3Path: string;
+  isActive: boolean;
+  createdAt: string;
+};
+
+export function DashBoard() {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [envs, setEnvs] = useState<Environment[]>([]);
+  const [versions, setVersions] = useState<Version[]>([]);
+
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(
+    null,
+  );
+  const [selectedEnvId, setSelectedEnvId] = useState<number | null>(null);
+  const [selectedVersionId, setSelectedVersionId] = useState<number | null>(
+    null,
+  );
+
+  const [error, setError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [successUrl, setSuccessUrl] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [isOpenSuccessDialog, setSuccessDialog] = useState<boolean>(false);
+    const [isBuildActivated, setBuildActivated] = useState<boolean>(false);
+
+  async function refreshProjects(id?: number) {
+    const projects = await apiFetch<Project[]>("/projects");
+    setProjects(projects);
+    if (id) setSelectedProjectId(id);
+  }
+
+  async function refreshEnvironemts(projectId?: number, envId?: number) {
+    const envs = await apiFetch<Environment[]>(
+      `/projects/${projectId}/environments`,
+    );
+    setEnvs(envs);
+    if (envId) setSelectedEnvId(envId);
+  }
+  function resetForm() {
+    setSelectedProjectId(null);
+    setSelectedEnvId(null);
+    setSelectedVersionId(null);
+
+    setEnvs([]);
+    setVersions([]);
+
+    setFile(null);
+    setError(null);
+  }
+  async function refreshVersions(
+    projectId?: number,
+    envId?: number,
+    versionId?: number,
+  ) {
+    const versions = await apiFetch<Version[]>(
+      `/projects/${projectId}/environments/${envId}/versions`,
+    );
+    setVersions(versions);
+
+    if (versionId) setSelectedVersionId(versionId);
+  }
+
+  useEffect(() => {
+    refreshProjects().catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    if (!selectedProjectId) return;
+    setEnvs([]);
+    setVersions([]);
+    setSelectedEnvId(null);
+    setSelectedVersionId(null);
+    console.log("Refresed envs: " + selectedProjectId);
+    refreshEnvironemts(selectedProjectId).catch(console.error);
+  }, [selectedProjectId]);
+
+  useEffect(() => {
+    if (selectedEnvId == null || selectedProjectId == null) return;
+
+    setVersions([]);
+    setSelectedVersionId(null);
+    console.log("Version effect "+ selectedProjectId +" " + selectedEnvId)
+    refreshVersions(selectedProjectId, selectedEnvId).catch(console.error);
+  }, [selectedEnvId, selectedProjectId]);
+  async function activateVersion(){
+    const res = await fetch(
+      `http://localhost:4000/versions/${selectedVersionId}/activate`,
+      {
+        method: "POST",
+      },
+    );
+    return res.status == 204
+  }
+  
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSuccessUrl(null);
+
+    if (!selectedEnvId || !selectedProjectId || !selectedVersionId || !file) {
+      setError("All fields are required");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("projectId", selectedProjectId.toString());
+    formData.append("environmentId", selectedEnvId.toString());
+    formData.append("versionId", selectedVersionId.toString());
+
+    try {
+      setIsUploading(true);
+
+      const res = await fetch("http://localhost:4000/api/builds/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Upload failed");
+      }
+
+      const data = await res.json();
+      setSuccessUrl(data["publicUrl"]);
+
+      setSuccessDialog(true);
+      setBuildActivated(data.isThisVersionDefault);
+      //resetForm();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsUploading(false);
+    }
+  }
+useEffect(() => {
+  if (!isOpenSuccessDialog) {
+    setSuccessUrl(null);
+    resetForm()
+  }
+}, [isOpenSuccessDialog]);
+  return (
+    <section className="mx-auto w-full max-w-4xl rounded-lg border p-10">
+      <h2 className="text-2xl font-semibold text-center mb-8">Upload Build</h2>
+      <UploadSuccess
+        isOpenSuccessDialog={isOpenSuccessDialog}
+        setSuccessDialog={setSuccessDialog}
+        successUrl={successUrl ? successUrl : ""}
+        showActivateButton={!isBuildActivated}
+        activateVersion={activateVersion}
+      />
+      <form onSubmit={onSubmit} className="flex flex-col items-center gap-6">
+        <ProjectSelect
+          value={
+            selectedProjectId != null ? String(selectedProjectId) : undefined
+          }
+          onChange={(id) => {
+            console.log("Project id changed - " + id);
+            setSelectedProjectId(id);
+          }}
+          projects={projects}
+          refreshProjects={refreshProjects}
+          showAddProject={true}
+        />
+        <EnvironmentSelect
+          value={selectedEnvId != null ? String(selectedEnvId) : undefined}
+          onChange={(id) => {
+            console.log("Env id changed - " + id);
+            setSelectedEnvId(id);
+          }}
+          envs={envs}
+          refreshEnvironemts={refreshEnvironemts}
+          projectId={selectedProjectId ? selectedProjectId : undefined}
+          showAddEnvironment={true}
+        />
+
+        <VersionSelect
+          value={
+            selectedVersionId != null ? String(selectedVersionId) : undefined
+          }
+          onChange={(id) => setSelectedVersionId(id)}
+          versions={versions}
+          projectId={selectedProjectId ? selectedProjectId : undefined}
+          envId={selectedEnvId ? selectedEnvId : undefined}
+          refreshVersions={refreshVersions}
+          showAddVersion={true}
+        />
+        {error && <p className="text-sm text-destructive">{error}</p>}
+
+        {successUrl && (
+          <p className="text-sm text-green-600">
+            Upload successful:{" "}
+            <a href={successUrl} target="_blank" className="underline">
+              {successUrl}
+            </a>
+          </p>
+        )}
+        <FileDropzone file={file} onChange={setFile} />
+        <div className="flex flex-row gap-12">
+          <Button
+            type="submit"
+            disabled={
+              isUploading ||
+              !selectedProjectId ||
+              !selectedEnvId ||
+              !selectedVersionId ||
+              !file
+            }
+          >
+            {isUploading ? "Uploading..." : "Upload Build"}
+          </Button>
+          <Button type="button" variant="outline" onClick={resetForm}>
+            Reset
+          </Button>
+        </div>
+      </form>
+    </section>
+  );
+}

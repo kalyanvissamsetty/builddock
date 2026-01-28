@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef } from "react"
+import { useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { FileArchive, Upload, X } from "lucide-react"
@@ -13,10 +13,19 @@ type Props = {
 
 export function FileDropzone({ file, onChange, error }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null)
+  function resetInput() {
+    if (inputRef.current) {
+      inputRef.current.value = "";
+    }
+  }
+  useEffect(()=>{
+    if(file == null) resetInput()
+  },[file])
 
   function selectFile(selected: File) {
     if (!selected.name.endsWith(".zip")) {
       onChange(null)
+      resetInput()
       return
     }
     onChange(selected)
@@ -26,9 +35,9 @@ export function FileDropzone({ file, onChange, error }: Props) {
     <div className="w-full max-w-sm">
       <div
         onDrop={(e) => {
-          e.preventDefault()
-          const f = e.dataTransfer.files[0]
-          if (f) selectFile(f)
+          e.preventDefault();
+          const f = e.dataTransfer.files[0];
+          if (f) selectFile(f);
         }}
         onDragOver={(e) => e.preventDefault()}
         className="rounded-md border border-dashed px-6 py-10 text-center hover:border-primary transition"
@@ -48,9 +57,10 @@ export function FileDropzone({ file, onChange, error }: Props) {
               type="file"
               accept=".zip"
               className="sr-only"
-              onChange={(e) =>
-                e.target.files && selectFile(e.target.files[0])
-              }
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) selectFile(f);
+              }}
             />
           </Label>
         </div>
@@ -68,7 +78,10 @@ export function FileDropzone({ file, onChange, error }: Props) {
             size="icon"
             variant="ghost"
             className="absolute right-1 top-1"
-            onClick={() => onChange(null)}
+            onClick={() => {
+              onChange(null);
+              resetInput();
+            }}
           >
             <X className="h-4 w-4" />
           </Button>
@@ -85,5 +98,5 @@ export function FileDropzone({ file, onChange, error }: Props) {
         </div>
       )}
     </div>
-  )
+  );
 }
