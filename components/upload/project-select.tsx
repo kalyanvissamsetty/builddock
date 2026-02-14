@@ -1,5 +1,5 @@
-"use client"
-import { Project } from "../dashboard/dashboard"
+"use client";
+import { Project } from "../Pages/Shared/UploadBuild";
 import {
   Select,
   SelectContent,
@@ -8,17 +8,17 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { CreateEntityDialog } from "./dialog/CreateEntityDialog"
-import { apiFetch } from "../lib/api"
+} from "@/components/ui/select";
+import { CreateEntityDialog } from "./dialog/CreateEntityDialog";
+import { apiFetch } from "../lib/api";
 
 type Props = {
-  value?: string
-  onChange: (value: number) => void
-  projects: Project[]
-  refreshProjects: (value?: number)=>void
-  showAddProject: boolean
-}
+  value?: string;
+  onChange: (value: number) => void;
+  projects: Project[];
+  refreshProjects: (value?: number) => void;
+  showAddProject: boolean;
+};
 
 export function ProjectSelect({
   value,

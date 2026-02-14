@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Environment } from "../dashboard/dashboard";
+import { Environment } from "../Pages/Shared/UploadBuild";
 import { apiFetch } from "../lib/api";
 import { CreateEntityDialog } from "./dialog/CreateEntityDialog";
 
@@ -19,7 +19,7 @@ type Props = {
   envs: Environment[];
   refreshEnvironemts: (projectId: number, envId?: number) => void;
   projectId?: number;
-  showAddEnvironment: boolean
+  showAddEnvironment: boolean;
 };
 
 export function EnvironmentSelect({
@@ -28,7 +28,7 @@ export function EnvironmentSelect({
   envs,
   refreshEnvironemts,
   projectId,
-  showAddEnvironment
+  showAddEnvironment,
 }: Props) {
   return (
     <div className="max-w-xs w-full flex flex-row gap-4">

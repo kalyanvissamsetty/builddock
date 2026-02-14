@@ -1,39 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ProjectSelect } from "../upload/project-select";
-import { EnvironmentSelect } from "../upload/env-select";
-import { FileDropzone } from "../upload/file-dropzone";
+import { ProjectSelect } from "../../upload/project-select";
+import { EnvironmentSelect } from "../../upload/env-select";
+import { FileDropzone } from "../../upload/file-dropzone";
 
-import { apiFetch } from "../lib/api";
-import { env } from "process";
-import { VersionSelect } from "../upload/version-select";
-import { UploadSuccess } from "../upload/dialog/UploadSuccess";
+import { apiFetch } from "../../lib/api";
+import { VersionSelect } from "../../upload/version-select";
+import { UploadSuccess } from "../../upload/dialog/UploadSuccess";
+import { Project, Environment, Version, UploadBuildResponse } from "@/types";
 
-export type Project = {
-  id: number;
-  name: string;
-  slug: string;
-  createdAt: string;
-};
-export type Environment = {
-  id: number;
-  name: string;
-  slug: string;
-  projectId: number;
-  createdAt: string;
-};
-export type Version = {
-  id: number;
-  name: string;
-  environmentId: number;
-  s3Path: string;
-  isActive: boolean;
-  createdAt: string;
-};
-
-export function DashBoard() {
+export function UploadBuild() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [envs, setEnvs] = useState<Environment[]>([]);
   const [versions, setVersions] = useState<Version[]>([]);
@@ -51,7 +29,7 @@ export function DashBoard() {
   const [successUrl, setSuccessUrl] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [isOpenSuccessDialog, setSuccessDialog] = useState<boolean>(false);
-    const [isBuildActivated, setBuildActivated] = useState<boolean>(false);
+  const [isBuildActivated, setBuildActivated] = useState<boolean>(false);
 
   async function refreshProjects(id?: number) {
     const projects = await apiFetch<Project[]>("/projects");
@@ -109,19 +87,17 @@ export function DashBoard() {
 
     setVersions([]);
     setSelectedVersionId(null);
-    console.log("Version effect "+ selectedProjectId +" " + selectedEnvId)
+    console.log("Version effect " + selectedProjectId + " " + selectedEnvId);
     refreshVersions(selectedProjectId, selectedEnvId).catch(console.error);
   }, [selectedEnvId, selectedProjectId]);
-  async function activateVersion(){
-    const res = await fetch(
-      `http://localhost:4000/versions/${selectedVersionId}/activate`,
-      {
-        method: "POST",
-      },
-    );
-    return res.status == 204
+  async function activateVersion() {
+    await apiFetch<void>(`/versions/${selectedVersionId}/activate`, {
+      method: "POST",
+    });
+
+    return true;
   }
-  
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -141,18 +117,16 @@ export function DashBoard() {
     try {
       setIsUploading(true);
 
-      const res = await fetch("http://localhost:4000/api/builds/upload", {
+      const data = await apiFetch<UploadBuildResponse>("/api/builds/upload", {
         method: "POST",
         body: formData,
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || "Upload failed");
-      }
+      console.log(data.publicUrl);
+      console.log(data.message);
+      console.log(data.isThisVersionDefault);
 
-      const data = await res.json();
-      setSuccessUrl(data["publicUrl"]);
+      setSuccessUrl(data.publicUrl);
 
       setSuccessDialog(true);
       setBuildActivated(data.isThisVersionDefault);
@@ -164,12 +138,12 @@ export function DashBoard() {
       setIsUploading(false);
     }
   }
-useEffect(() => {
-  if (!isOpenSuccessDialog) {
-    setSuccessUrl(null);
-    resetForm()
-  }
-}, [isOpenSuccessDialog]);
+  useEffect(() => {
+    if (!isOpenSuccessDialog) {
+      setSuccessUrl(null);
+      resetForm();
+    }
+  }, [isOpenSuccessDialog]);
   return (
     <section className="mx-auto w-full max-w-4xl rounded-lg border p-10">
       <h2 className="text-2xl font-semibold text-center mb-8">Upload Build</h2>

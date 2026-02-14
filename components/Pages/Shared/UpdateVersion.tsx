@@ -2,33 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ProjectSelect } from "../../components/upload/project-select";
-import { EnvironmentSelect } from "../../components/upload/env-select";
+import { ProjectSelect } from "../../upload/project-select";
+import { EnvironmentSelect } from "../../upload/env-select";
 
-import { apiFetch } from "../../components/lib/api";
-import { VersionSelect } from "../../components/upload/version-select";
+import { VersionSelect } from "../../upload/version-select";
+import { Project, Environment, Version } from "@/types";
 
-export type Project = {
-  id: number;
-  name: string;
-  slug: string;
-  createdAt: string;
-};
-export type Environment = {
-  id: number;
-  name: string;
-  slug: string;
-  projectId: number;
-  createdAt: string;
-};
-export type Version = {
-  id: number;
-  name: string;
-  environmentId: number;
-  s3Path: string;
-  isActive: boolean;
-  createdAt: string;
-};
+import {
+  fetchProjects,
+  fetchEnvironments,
+  fetchVersions,
+} from "@/components/lib/build-api";
 
 export default function UpdateVersion() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -47,17 +31,39 @@ export default function UpdateVersion() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isUpdateSuccess, setUpdateSuccess] = useState(false);
   async function refreshProjects(id?: number) {
-    const projects = await apiFetch<Project[]>("/projects");
+    const projects = await fetchProjects();
     setProjects(projects);
     if (id) setSelectedProjectId(id);
   }
 
   async function refreshEnvironemts(projectId?: number, envId?: number) {
-    const envs = await apiFetch<Environment[]>(
-      `/projects/${projectId}/environments`,
-    );
+    if (projectId === undefined || projectId === null) {
+      setEnvs([]);
+      return;
+    }
+    const envs = await fetchEnvironments(projectId);
     setEnvs(envs);
-    if (envId) setSelectedEnvId(envId);
+    if (envId !== undefined && envId !== null) setSelectedEnvId(envId);
+  }
+  async function refreshVersions(
+    projectId?: number,
+    envId?: number,
+    versionId?: number,
+  ) {
+    if (
+      projectId === undefined ||
+      projectId === null ||
+      envId === undefined ||
+      envId === null
+    ) {
+      setVersions([]);
+      return;
+    }
+    const versions = await fetchVersions(projectId, envId);
+    setVersions(versions);
+
+    if (versionId !== undefined && versionId !== null)
+      setSelectedVersionId(versionId);
   }
   function resetForm() {
     setSelectedProjectId(null);
@@ -66,20 +72,8 @@ export default function UpdateVersion() {
 
     setEnvs([]);
     setVersions([]);
-    setUpdateSuccess(false)
+    setUpdateSuccess(false);
     setError(null);
-  }
-  async function refreshVersions(
-    projectId?: number,
-    envId?: number,
-    versionId?: number,
-  ) {
-    const versions = await apiFetch<Version[]>(
-      `/projects/${projectId}/environments/${envId}/versions`,
-    );
-    setVersions(versions);
-
-    if (versionId) setSelectedVersionId(versionId);
   }
 
   useEffect(() => {
@@ -114,7 +108,6 @@ export default function UpdateVersion() {
       return;
     }
 
-
     try {
       setIsUpdating(true);
       const res = await fetch(
@@ -130,8 +123,8 @@ export default function UpdateVersion() {
       }
 
       resetForm();
-      console.log("res status - "+ res.status)
-      if(res.status == 204) setUpdateSuccess(true);
+      console.log("res status - " + res.status);
+      if (res.status == 204) setUpdateSuccess(true);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err.message);
@@ -193,9 +186,7 @@ export default function UpdateVersion() {
         {error && <p className="text-sm text-destructive">{error}</p>}
 
         {isUpdateSuccess && (
-          <p className="text-sm text-green-600">
-            Update Successful
-          </p>
+          <p className="text-sm text-green-600">Update Successful</p>
         )}
         <div className="flex flex-row gap-12">
           <Button

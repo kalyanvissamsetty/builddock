@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Version } from "../dashboard/dashboard";
+import { Version } from "../Pages/Shared/UploadBuild";
 import { apiFetch } from "../lib/api";
 import { CreateEntityDialog } from "./dialog/CreateEntityDialog";
 
@@ -31,7 +31,6 @@ export function VersionSelect({
   envId,
   refreshVersions,
   showAddVersion,
-  
 }: Props) {
   const isDisabled = versions.length === 0 || !projectId || !envId;
   return (

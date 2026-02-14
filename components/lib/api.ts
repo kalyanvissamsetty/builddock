@@ -6,23 +6,42 @@ if (!API_BASE) {
 
 export async function apiFetch<T>(
   path: string,
-  init?: RequestInit
+  init?: RequestInit,
 ): Promise<T> {
+  const isFormData = init?.body instanceof FormData;
+
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
+    credentials: "include",
     headers: {
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...(init?.headers ?? {}),
     },
     cache: "no-store",
   });
 
   if (!res.ok) {
-    let msg = `Request failed: ${res.status}`;
+    let message = `Request failed: ${res.status}`;
+    let code: string | undefined;
+
     try {
       const data = await res.json();
-      msg = data?.message || msg;
-    } catch {}
-    throw new Error(msg);
+      message = data?.message || message;
+      code = data?.code;
+    } catch {
+      // ignore JSON parse failure
+    }
+
+    const error = new Error(message) as Error & { code?: string };
+    if (code) {
+      error.code = code;
+    }
+
+    throw error;
+  }
+
+  if (res.status === 204) {
+    return undefined as T;
   }
 
   return res.json() as Promise<T>;
