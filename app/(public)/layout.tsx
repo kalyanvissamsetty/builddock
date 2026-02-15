@@ -10,14 +10,14 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   console.log("public layout")
-  let me
-  try{
-   me = await getMe()
-  }
-  catch(e){
-    console.log("no user found "+ e)
-  }
-  if(me) redirect("/")
+  // let me
+  // try{
+  //  me = await getMe()
+  // }
+  // catch(e){
+  //   console.log("no user found "+ e)
+  // }
+  // if(me) redirect("/")
 
   return (
     <div>

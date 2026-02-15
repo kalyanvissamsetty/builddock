@@ -2,7 +2,7 @@
 
 import { createContext, useEffect, useState } from "react";
 import { apiFetch } from "@/components/lib/api";
-import type { Me } from "@/components/lib/auth";
+import { Me } from "../lib/auth";
 
 type AuthContextType = {
   me: Me | null;
