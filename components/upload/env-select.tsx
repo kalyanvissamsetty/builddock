@@ -65,7 +65,6 @@ export function EnvironmentSelect({
           showAddButton={projectId == undefined || projectId == null}
           onSubmit={async ({ name, slug }) => {
             if (projectId == undefined || projectId == null) return;
-            console.log(name + "- name");
             await apiFetch(`/projects/${projectId}/environments`, {
               method: "POST",
               headers: {

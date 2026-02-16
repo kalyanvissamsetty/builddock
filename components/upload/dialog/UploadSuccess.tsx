@@ -28,7 +28,6 @@ export function UploadSuccess({
 }: Props) {
   const [isActivationSuccess, setActivationSuccess] = useState(false);
   async function activateVersionOnButtonClick() {
-    console.log("click");
     const active = await activateVersion();
     setActivationSuccess(active);
   }

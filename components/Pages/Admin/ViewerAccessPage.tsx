@@ -117,7 +117,6 @@ export function ViewerAccessPage() {
     setVersions([]);
     setSelectedEnvId(null);
     setSelectedVersionId(null);
-    console.log("Refresed envs: " + selectedProjectId);
     refreshEnvironemts(selectedProjectId).catch(console.error);
   }, [selectedProjectId]);
 
@@ -126,14 +125,13 @@ export function ViewerAccessPage() {
 
     setVersions([]);
     setSelectedVersionId(null);
-    console.log("Version effect " + selectedProjectId + " " + selectedEnvId);
+
     refreshVersions(selectedProjectId, selectedEnvId).catch(console.error);
   }, [selectedEnvId, selectedProjectId]);
   async function assign() {
     if (!viewerId || !selectedVersionId) return;
 
     setLoading(true);
-    console.log(viewerId + " " + selectedVersionId);
     await apiFetch("/api/admin/viewer-access", {
       method: "POST",
       body: JSON.stringify({ userId: viewerId, versionId: selectedVersionId }),

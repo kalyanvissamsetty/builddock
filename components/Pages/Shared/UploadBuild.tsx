@@ -78,7 +78,6 @@ export function UploadBuild() {
     setVersions([]);
     setSelectedEnvId(null);
     setSelectedVersionId(null);
-    console.log("Refresed envs: " + selectedProjectId);
     refreshEnvironemts(selectedProjectId).catch(console.error);
   }, [selectedProjectId]);
 
@@ -87,7 +86,7 @@ export function UploadBuild() {
 
     setVersions([]);
     setSelectedVersionId(null);
-    console.log("Version effect " + selectedProjectId + " " + selectedEnvId);
+
     refreshVersions(selectedProjectId, selectedEnvId).catch(console.error);
   }, [selectedEnvId, selectedProjectId]);
   async function activateVersion() {
@@ -121,10 +120,6 @@ export function UploadBuild() {
         method: "POST",
         body: formData,
       });
-
-      console.log(data.publicUrl);
-      console.log(data.message);
-      console.log(data.isThisVersionDefault);
 
       setSuccessUrl(data.publicUrl);
 
@@ -160,7 +155,6 @@ export function UploadBuild() {
             selectedProjectId != null ? String(selectedProjectId) : undefined
           }
           onChange={(id) => {
-            console.log("Project id changed - " + id);
             setSelectedProjectId(id);
           }}
           projects={projects}
@@ -170,7 +164,6 @@ export function UploadBuild() {
         <EnvironmentSelect
           value={selectedEnvId != null ? String(selectedEnvId) : undefined}
           onChange={(id) => {
-            console.log("Env id changed - " + id);
             setSelectedEnvId(id);
           }}
           envs={envs}

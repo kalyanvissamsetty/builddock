@@ -33,7 +33,6 @@ export function ProjectSelect({
         value={value ?? ""}
         onValueChange={(id) => {
           if (!id) return;
-          console.log("from project- " + id);
           onChange(Number(id));
         }}
         disabled={projects.length == 0}
@@ -61,7 +60,6 @@ export function ProjectSelect({
           ]}
           showAddButton={false}
           onSubmit={async ({ name, slug }) => {
-            console.log(name + "- name");
             await apiFetch("/projects", {
               method: "POST",
               headers: {

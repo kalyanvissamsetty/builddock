@@ -86,7 +86,6 @@ export default function UpdateVersion() {
     setVersions([]);
     setSelectedEnvId(null);
     setSelectedVersionId(null);
-    console.log("Refresed envs: " + selectedProjectId);
     refreshEnvironemts(selectedProjectId).catch(console.error);
   }, [selectedProjectId]);
 
@@ -95,7 +94,6 @@ export default function UpdateVersion() {
 
     setVersions([]);
     setSelectedVersionId(null);
-    console.log("Version effect " + selectedProjectId + " " + selectedEnvId);
     refreshVersions(selectedProjectId, selectedEnvId).catch(console.error);
   }, [selectedEnvId, selectedProjectId]);
 
@@ -123,7 +121,6 @@ export default function UpdateVersion() {
       }
 
       resetForm();
-      console.log("res status - " + res.status);
       if (res.status == 204) setUpdateSuccess(true);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
@@ -153,7 +150,6 @@ export default function UpdateVersion() {
             selectedProjectId != null ? String(selectedProjectId) : undefined
           }
           onChange={(id) => {
-            console.log("Project id changed - " + id);
             setSelectedProjectId(id);
           }}
           projects={projects}
@@ -163,7 +159,6 @@ export default function UpdateVersion() {
         <EnvironmentSelect
           value={selectedEnvId != null ? String(selectedEnvId) : undefined}
           onChange={(id) => {
-            console.log("Env id changed - " + id);
             setSelectedEnvId(id);
           }}
           envs={envs}

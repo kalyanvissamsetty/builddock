@@ -9,9 +9,7 @@ export default async function HomePage() {
 
   try {
     me = await getMe();
-    console.log("main page try");
   } catch {
-    console.log("main page catch");
     redirect("/login");
   }
 

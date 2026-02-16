@@ -53,7 +53,6 @@ export default function SignupPage() {
         router.replace(`/verifyotp?email=${encodeURIComponent(email)}`);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (err: any) {
-        console.log(err.message);
         setError(err.message);
       } finally {
         setLoading(false);

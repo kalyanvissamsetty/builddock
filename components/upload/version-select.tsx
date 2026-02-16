@@ -82,7 +82,6 @@ export function VersionSelect({
               envId == null
             )
               return;
-            console.log(name + "- name");
             await apiFetch(
               `/projects/${projectId}/environments/${envId}/versions`,
               {

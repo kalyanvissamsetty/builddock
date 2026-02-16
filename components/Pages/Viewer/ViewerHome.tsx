@@ -15,7 +15,6 @@ export default function ViewerHome() {
   const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const { me } = useAuth();
-  console.log(me)
   useEffect(() => {
     loadBuilds();
   }, []);

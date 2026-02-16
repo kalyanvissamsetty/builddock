@@ -15,9 +15,7 @@ export default async function RootLayout({
   try {
     me = await getMe();
   } catch (e) {
-    console.log("no user found " + e);
   }
-  console.log("admin layout");
   if(me == null) redirect("/login")
   return (
     <div>
