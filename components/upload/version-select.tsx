@@ -9,9 +9,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Version } from "../Pages/Shared/UploadBuild";
 import { apiFetch } from "../lib/api";
 import { CreateEntityDialog } from "./dialog/CreateEntityDialog";
+import { Version } from "@/types";
 
 type Props = {
   value?: string;

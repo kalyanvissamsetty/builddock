@@ -11,5 +11,5 @@ export type Me = {
 import { serverApiFetch } from "./serverApi";
 
 export async function getMe() {
-  return serverApiFetch("/api/auth/me");
+  return serverApiFetch<Me>("/api/auth/me");
 }

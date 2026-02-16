@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { apiFetch } from "@/components/lib/api";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Me } from "@/components/lib/auth";
-export default function VerifyOtpPage() {
+
+function VerifyOtpForm() {
   const params = useSearchParams();
   const router = useRouter();
 
@@ -25,7 +26,8 @@ export default function VerifyOtpPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(60);
-const [autoTriggered, setAutoTriggered] = useState(false);
+  const [autoTriggered, setAutoTriggered] = useState(false);
+
   useEffect(() => {
     if (!email) return;
     const interval = setInterval(() => {
@@ -34,53 +36,57 @@ const [autoTriggered, setAutoTriggered] = useState(false);
 
     return () => clearInterval(interval);
   }, [email]);
-useEffect(() => {
-  if (reason === "not-verified" && email && !autoTriggered) {
-    autoResendOtp();
-    setAutoTriggered(true);
+
+  useEffect(() => {
+    if (reason === "not-verified" && email && !autoTriggered) {
+      autoResendOtp();
+      setAutoTriggered(true);
+    }
+  }, [reason, email]);
+
+  useEffect(() => {
+    if (!success) return;
+
+    const timer = setTimeout(() => {
+      setSuccess(null);
+    }, 10000); // 10 seconds
+
+    return () => clearTimeout(timer);
+  }, [success]);
+
+  async function autoResendOtp() {
+    try {
+      await apiFetch("/api/auth/resend-otp", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      });
+
+      setCooldown(60);
+      setSuccess("A new OTP has been sent to your email.");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (e: any) {
+      setError(e.message || "Failed to resend OTP");
+    }
   }
-}, [reason, email]);
 
-useEffect(() => {
-  if (!success) return;
+  async function handlePaste() {
+    try {
+      const text = await navigator.clipboard.readText();
 
-  const timer = setTimeout(() => {
-    setSuccess(null);
-  }, 10000); // 10 seconds
+      // Extract only digits
+      const cleaned = text.replace(/\D/g, "");
 
-  return () => clearTimeout(timer);
-}, [success]);
-async function autoResendOtp() {
-  try {
-    await apiFetch("/api/auth/resend-otp", {
-      method: "POST",
-      body: JSON.stringify({ email }),
-    });
+      // Limit to 6 digits (or your OTP length)
+      const otpValue = cleaned.slice(0, 6);
 
-    setCooldown(60);
-    setSuccess("A new OTP has been sent to your email.");
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (e: any) {
-    setError(e.message || "Failed to resend OTP");
+      if (otpValue.length === 0) return;
+
+      setOtp(otpValue);
+    } catch (err) {
+      console.error("Clipboard access failed");
+    }
   }
-}
-async function handlePaste() {
-  try {
-    const text = await navigator.clipboard.readText();
 
-    // Extract only digits
-    const cleaned = text.replace(/\D/g, "");
-
-    // Limit to 6 digits (or your OTP length)
-    const otpValue = cleaned.slice(0, 6);
-
-    if (otpValue.length === 0) return;
-
-    setOtp(otpValue);
-  } catch (err) {
-    console.error("Clipboard access failed");
-  }
-}
   async function handleVerify() {
     setError(null);
     setSuccess(null);
@@ -199,5 +205,13 @@ async function handlePaste() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function VerifyOtpPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <VerifyOtpForm />
+    </Suspense>
   );
 }

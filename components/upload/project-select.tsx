@@ -1,5 +1,4 @@
 "use client";
-import { Project } from "../Pages/Shared/UploadBuild";
 import {
   Select,
   SelectContent,
@@ -11,6 +10,7 @@ import {
 } from "@/components/ui/select";
 import { CreateEntityDialog } from "./dialog/CreateEntityDialog";
 import { apiFetch } from "../lib/api";
+import { Project } from "@/types";
 
 type Props = {
   value?: string;

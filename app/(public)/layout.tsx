@@ -1,5 +1,5 @@
 import "../globals.css";
-import { getMe } from "@/components/lib/auth";
+import { getMe, Me } from "@/components/lib/auth";
 import { redirect } from "next/navigation";
 
 
@@ -9,15 +9,14 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  console.log("public layout")
-  // let me
-  // try{
-  //  me = await getMe()
-  // }
-  // catch(e){
-  //   console.log("no user found "+ e)
-  // }
-  // if(me) redirect("/")
+  let me: Me | undefined;
+  try {
+    me = await getMe();
+  } catch {
+    // User is not logged in, which is fine for public pages
+  }
+
+  if (me) redirect("/");
 
   return (
     <div>
