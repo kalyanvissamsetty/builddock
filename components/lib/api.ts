@@ -4,45 +4,45 @@ if (!API_BASE) {
   console.warn("NEXT_PUBLIC_API_BASE_URL is not set");
 }
 
-export async function apiFetch<T>(
-  path: string,
-  init?: RequestInit,
-): Promise<T> {
+export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const isFormData = init?.body instanceof FormData;
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...init,
-    credentials: "include",
-    headers: {
-      ...(isFormData ? {} : { "Content-Type": "application/json" }),
-      ...(init?.headers ?? {}),
-    },
-    cache: "no-store",
-  });
+  async function doFetch(): Promise<Response> {
+    return fetch(`${API_BASE}${path}`, {
+      ...init,
+      credentials: "include",
+      headers: {
+        ...(isFormData ? {} : { "Content-Type": "application/json" }),
+        ...(init?.headers ?? {}),
+      },
+      cache: "no-store",
+    });
+  }
+
+  let res = await doFetch();
+
+  // If access expired, refresh and retry once
+  if (res.status === 401) {
+    const refreshRes = await fetch(`${API_BASE}/api/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+      cache: "no-store",
+    });
+
+    if (refreshRes.ok) {
+      res = await doFetch();
+    }
+  }
 
   if (!res.ok) {
-    let message = `Request failed: ${res.status}`;
-    let code: string | undefined;
-
+    let msg = `Request failed: ${res.status}`;
     try {
       const data = await res.json();
-      message = data?.message || message;
-      code = data?.code;
-    } catch {
-      // ignore JSON parse failure
-    }
-
-    const error = new Error(message) as Error & { code?: string };
-    if (code) {
-      error.code = code;
-    }
-
-    throw error;
+      msg = data?.message || msg;
+    } catch { }
+    throw new Error(msg);
   }
 
-  if (res.status === 204) {
-    return undefined as T;
-  }
-
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
