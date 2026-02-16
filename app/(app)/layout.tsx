@@ -11,16 +11,18 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  let me;
+  let me: Me | null = null;
   try {
     me = await getMe();
   } catch (e) {
   }
-  if(me == null) redirect("/login")
+  if (!me || typeof me !== "object" || !("role" in me)) {
+    redirect("/login");
+  }
   return (
     <div>
       <AuthProvider>
-        {(me as Me) && <Navbar me={me as Me} />}
+        <Navbar me={me as Me} />
         <div className="p-6">{children}</div>
       </AuthProvider>
     </div>

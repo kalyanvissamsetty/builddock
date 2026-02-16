@@ -3,6 +3,11 @@ import { cookies } from "next/headers";
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export async function serverApiFetch<T>(path: string): Promise<T> {
+  if (!API_BASE) {
+    throw new Error(
+      "NEXT_PUBLIC_API_BASE_URL is not set. Set it in .env.local for server API calls."
+    );
+  }
   const cookieStore = await cookies();
 
   const cookieHeader = cookieStore

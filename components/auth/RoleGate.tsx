@@ -5,7 +5,8 @@ type Props = {
   me: Me;
 };
 
-export function RoleGate({ me}: Props) {
+export function RoleGate({ me }: Props) {
+  if (!me?.role) return null;
   switch (me.role) {
     case "ADMIN":
       return redirect("/vieweraccess")
