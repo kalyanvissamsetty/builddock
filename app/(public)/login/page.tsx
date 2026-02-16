@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiFetch } from "../../../components/lib/api";
+import Image from "next/image";
+import logo from "@/public/logos/logo.png";
 
 function LoginForm() {
   const router = useRouter();
@@ -44,7 +46,15 @@ function LoginForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted px-4">
+    <div className="flex gap-4 flex-col min-h-screen items-center justify-center bg-muted px-4">
+      <Image
+        src={logo}
+        alt="BuildDock Logo"
+        width={150}
+        height={10}
+        priority
+        className="rounded-lg"
+      />
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle className="text-center text-2xl">Sign in</CardTitle>
