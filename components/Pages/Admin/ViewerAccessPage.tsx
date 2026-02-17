@@ -9,6 +9,7 @@ import { VersionSelect } from "@/components/upload/version-select";
 import { AssignedBuildsList } from "../../Helpers/AssignedBuildsList";
 import { apiFetch } from "@/components/lib/api";
 import { Environment, Project, Version } from "@/types";
+import { toast } from "sonner";
 export type AssignedBuild = {
   id: number;
   userId: number;
@@ -132,10 +133,16 @@ export function ViewerAccessPage() {
     if (!viewerId || !selectedVersionId) return;
 
     setLoading(true);
-    await apiFetch("/api/admin/viewer-access", {
+    const response:any = await apiFetch("/api/admin/viewer-access", {
       method: "POST",
       body: JSON.stringify({ userId: viewerId, versionId: selectedVersionId }),
     });
+    if (response?.assigned) {
+      toast.success("Build assigned");
+    } else {
+      toast.info(response.message);
+    }
+    console.log(response);
     loadAssigned(viewerId);
     setLoading(false);
   }

@@ -9,12 +9,13 @@ import { Label } from "@/components/ui/label";
 import { apiFetch } from "../../../components/lib/api";
 import Image from "next/image";
 import logo from "@/public/logos/logo.png";
+import { Eye, EyeOff } from "lucide-react";
 
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const verified = params.get("verified");
-
+  const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +47,7 @@ function LoginForm() {
   }
 
   return (
-    <div className="flex gap-4 flex-col min-h-screen items-center justify-center bg-muted px-4">
+    <div className="flex gap-4 flex-col min-h-screen items-center justify-center px-4">
       <Image
         src={logo}
         alt="BuildDock Logo"
@@ -72,7 +73,7 @@ function LoginForm() {
               <Label>Email</Label>
               <Input
                 type="email"
-                placeholder="name@domain.com"
+                placeholder="you@company.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -81,12 +82,31 @@ function LoginForm() {
 
             <div className="space-y-2">
               <Label>Password</Label>
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="pr-10"
+                  placeholder="Enter your password"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  disabled={!password}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
             </div>
 
             {error && <p className="text-sm text-destructive">{error}</p>}

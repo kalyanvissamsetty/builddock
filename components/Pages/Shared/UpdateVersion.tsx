@@ -13,6 +13,8 @@ import {
   fetchEnvironments,
   fetchVersions,
 } from "@/components/lib/build-api";
+import { apiFetch } from "@/components/lib/api";
+import { toast } from "sonner";
 
 export default function UpdateVersion() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -108,23 +110,26 @@ export default function UpdateVersion() {
 
     try {
       setIsUpdating(true);
-      const res = await fetch(
-        `http://localhost:4000/versions/${selectedVersionId}/activate`,
-        {
-          method: "POST",
-        },
+      setError(null);
+
+      const data = await apiFetch<{ message: string }>(
+        `/versions/${selectedVersionId}/activate`,
+        { method: "POST" }
       );
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || "Update failed");
-      }
-
       resetForm();
-      if (res.status == 204) setUpdateSuccess(true);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      setError(err.message);
+      setUpdateSuccess(true);
+      setTimeout(() => {
+        resetForm();
+      }, 2000);
+      toast.success(data.message);
+
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Update failed";
+      setError(message);
+      toast.error(message);
+
     } finally {
       setIsUpdating(false);
     }

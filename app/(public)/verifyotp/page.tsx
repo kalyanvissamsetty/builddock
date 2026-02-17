@@ -7,12 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Clipboard } from "lucide-react";
+import Image from "next/image";
+import logo from "@/public/logos/logo.png";
+import Link from "next/link";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Me } from "@/components/lib/auth";
 
 function VerifyOtpForm() {
   const params = useSearchParams();
@@ -140,7 +142,15 @@ function VerifyOtpForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
+    <div className="flex flex-col gap-4 min-h-screen items-center justify-center px-4">
+      <Image
+        src={logo}
+        alt="BuildDock Logo"
+        width={150}
+        height={10}
+        priority
+        className="rounded-lg"
+      />
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-xl">Verify Your Email</CardTitle>
@@ -204,6 +214,20 @@ function VerifyOtpForm() {
           </Button>
         </CardContent>
       </Card>
+      <p className="mt-4 text-center text-sm text-muted-foreground">
+        Go back to <Link
+          href="/login"
+          className="underline underline-offset-4 hover:text-foreground"
+        >
+          Login
+        </Link> or <Link
+          href="/signup"
+          className="underline underline-offset-4 hover:text-foreground"
+        >
+          Signup
+        </Link>?{" "}
+        
+      </p>
     </div>
   );
 }

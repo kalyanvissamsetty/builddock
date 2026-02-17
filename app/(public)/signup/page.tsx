@@ -10,6 +10,7 @@ import { apiFetch } from "../../../components/lib/api";
 import Image from "next/image";
 import logo from "@/public/logos/logo.png";
 import PasswordRules from "@/components/Helpers/PasswordRules";
+import { Eye, EyeOff } from "lucide-react";
 export default function SignupPage() {
   const router = useRouter();
 
@@ -34,33 +35,33 @@ export default function SignupPage() {
     isNameValid &&
     isEmailValid &&
     isPasswordValid &&
-    !loading; 
-    
-  async function onSubmit(e: React.FormEvent) {
-      e.preventDefault();
-      setError(null);
-      setLoading(true);
-      if (!name.trim()) {
-        throw Error("Name is required");
-      }
-      try {
-        await apiFetch("/api/auth/signup", {
-          method: "POST",
-          body: JSON.stringify({ email, password, name }),
-        });
+    !loading;
 
-        setSuccess(true);
-        router.replace(`/verifyotp?email=${encodeURIComponent(email)}`);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    if (!name.trim()) {
+      throw Error("Name is required");
     }
+    try {
+      await apiFetch("/api/auth/signup", {
+        method: "POST",
+        body: JSON.stringify({ email, password, name }),
+      });
+
+      setSuccess(true);
+      router.replace(`/verifyotp?email=${encodeURIComponent(email)}`);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
-    <div className="flex flex-col gap-4 min-h-screen items-center justify-center bg-muted px-4">
+    <div className="flex flex-col gap-4 min-h-screen items-center justify-center px-4">
       <Image
         src={logo}
         alt="BuildDock Logo"
@@ -91,43 +92,64 @@ export default function SignupPage() {
                   onChange={(e) => setName(e.target.value)}
                   required
                 />
-                  {!isNameValid && name.length > 0 && (
-                    <p className="text-xs text-destructive">
-                      Name is required
-                    </p>
-                  )}
+                {!isNameValid && name.length > 0 && (
+                  <p className="text-xs text-destructive">
+                    Name is required
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Email</Label>
                 <Input
                   type="email"
-                  placeholder="name@tims.group"
+                    placeholder="you@company.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                 />
-                  {email && !isEmailValid && (
-                    <p className="text-xs text-destructive">
-                      Enter a valid email address
-                    </p>
-                  )}
+                {email && !isEmailValid && (
+                  <p className="text-xs text-destructive">
+                    Enter a valid email address
+                  </p>
+                )}
               </div>
 
-              <div className="space-y-2">
-                <Label>Password</Label>
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-                {password.length > 0 && <PasswordRules rules={passwordRules} /> && <PasswordRules rules={passwordRules} />
-                }
-              </div>
+                <div className="space-y-2">
+                  <Label>Password</Label>
+
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="pr-10"
+                      placeholder="Enter your password"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      disabled={!password}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+
+                  {password.length > 0 && (
+                    <PasswordRules rules={passwordRules} />
+                  )}
+                </div>
 
               {error && <p className="text-sm text-destructive">{error}</p>}
 
-                <Button className="w-full" disabled={!isFormValid} aria-disabled={!isFormValid}>
+              <Button className="w-full" disabled={!isFormValid} aria-disabled={!isFormValid}>
                 {loading ? "Creating..." : "Sign up"}
               </Button>
             </form>

@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/components/lib/api";
 import { AssignedBuild } from "../Pages/Admin/ViewerAccessPage";
+import { toast } from "sonner";
 export function AssignedBuildsList({
   viewerId,
   builds,
@@ -12,10 +13,15 @@ export function AssignedBuildsList({
   onChange: () => void;
 }) {
   async function remove(versionId: number) {
-    await apiFetch("/api/admin/viewer-access", {
+    const response: any= await apiFetch("/api/admin/viewer-access", {
       method: "DELETE",
       body: JSON.stringify({ userId: viewerId, versionId }),
     });
+    if(response?.removed){
+      toast.success("Build Access Removed");
+    }else{
+      toast.info(response.message);
+    }
     onChange();
   }
 
