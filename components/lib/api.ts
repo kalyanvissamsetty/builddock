@@ -1,12 +1,11 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
-
-if (!API_BASE) {
-  console.warn("NEXT_PUBLIC_API_BASE_URL is not set");
-}
+//const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const isFormData = init?.body instanceof FormData;
-
+  let API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+  if (window.origin.includes("kalyanv.space")) {
+    API_BASE = "https://api.kalyanv.space:444";
+  }
   async function doFetch(): Promise<Response> {
     return fetch(`${API_BASE}${path}`, {
       ...init,
