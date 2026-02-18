@@ -124,6 +124,7 @@ export default function SignupPage() {
                       onChange={(e) => setPassword(e.target.value)}
                       required
                       className="pr-10"
+                      data-ms-editor="false"
                       placeholder="Enter your password"
                     />
 

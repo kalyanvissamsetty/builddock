@@ -53,7 +53,7 @@ export function CreateEntityDialog({
 
       await onSubmit(values);
 
-      // ✅ CLOSE ONLY ON SUCCESS
+      // CLOSE ONLY ON SUCCESS
       setValues({});
       setOpen(false);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

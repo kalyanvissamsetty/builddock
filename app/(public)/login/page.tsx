@@ -89,6 +89,7 @@ function LoginForm() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  data-ms-editor="false"
                   className="pr-10"
                   placeholder="Enter your password"
                 />
