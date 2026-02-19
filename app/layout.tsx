@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { avenir } from "../public/fonts/fonts";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TIMS Studio",
+  title: "WebGL Viewer",
   description: "Unity Webgl Build Management Tool",
 };
 
@@ -28,7 +29,7 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen`}
+        className={`${avenir.variable} antialiased min-h-screen font-sans`}
       >
         <main>
           <TooltipProvider>{children}</TooltipProvider>

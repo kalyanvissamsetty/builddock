@@ -70,7 +70,7 @@ export default function ViewerHome() {
       )}
 
       {/* Grid */}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 ">
         {builds.map((b) => {
           const project = b.version.environment.project.name;
           const projectSlug = b.version.environment.project.slug;
@@ -86,10 +86,10 @@ export default function ViewerHome() {
               className="flex flex-col justify-between hover:shadow-lg transition"
             >
               <CardHeader className="space-y-2">
-                <CardTitle className="text-base">{project}</CardTitle>
+                <CardTitle className="text-base font-sans font-normal">{project}</CardTitle>
                 <div className="flex flex-wrap gap-2 text-xs">
-                  <Badge variant="secondary">{env}</Badge>
-                  <Badge variant="outline">{version}</Badge>
+                  <Badge variant="secondary" className="font-sans font-normal">{env}</Badge>
+                  <Badge variant="outline" className="font-sans font-normal">{version}</Badge>
                 </div>
               </CardHeader>
 
