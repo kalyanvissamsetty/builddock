@@ -1,7 +1,12 @@
 import { cookies } from "next/headers";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
-
+let API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+if (typeof window !== "undefined" && window.origin.includes("themosaiccompany")) {
+  API_BASE = "https://preview-api.themosaiccompany.com:444";
+}
+else if(typeof window !== "undefined" && window.origin.includes("timsstudio")) {
+  API_BASE = "https://api.timsstudio.com";
+}
 async function buildCookieHeader() {
   const cookieStore = await cookies();
   return cookieStore

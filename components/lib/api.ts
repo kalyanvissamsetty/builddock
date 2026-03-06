@@ -22,6 +22,9 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   if (typeof window !== "undefined" && window.origin.includes("themosaiccompany")) {
     API_BASE = "https://preview-api.themosaiccompany.com:444";
   }
+  else if (typeof window !== "undefined" && window.origin.includes("timsstudio")) {
+    API_BASE = "https://api.timsstudio.com";
+  }
 
   async function doFetch(): Promise<Response> {
     return fetch(`${API_BASE}${path}`, {

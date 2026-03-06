@@ -101,6 +101,9 @@ export default function ViewerHome() {
                       if (typeof window !== "undefined" && window.origin.includes("themosaiccompany")) {
                         API_BASE = "https://preview-api.themosaiccompany.com:444";
                       }
+                      else if (typeof window !== "undefined" && window.origin.includes("timsstudio")) {
+                        API_BASE = "https://api.timsstudio.com";
+                      }
                       const backendUrl = `${API_BASE}${publicUrl}`;
                       window.open(backendUrl, "_blank");
                     }}
@@ -112,7 +115,14 @@ export default function ViewerHome() {
                     variant="outline"
                     className="w-full"
                     onClick={() => {
-                      const backendUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}${publicUrl}`;
+                      let API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+                      if (typeof window !== "undefined" && window.origin.includes("themosaiccompany")) {
+                        API_BASE = "https://preview-api.themosaiccompany.com:444";
+                      }
+                      else if (typeof window !== "undefined" && window.origin.includes("timsstudio")) {
+                        API_BASE = "https://api.timsstudio.com";
+                      }
+                      const backendUrl = `${API_BASE}${publicUrl}`;
                       copyToClipboard(backendUrl, b.id);
                     }}
                   >
