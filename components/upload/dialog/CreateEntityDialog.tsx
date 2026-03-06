@@ -100,7 +100,10 @@ export function CreateEntityDialog({
             {loading ? "Creating..." : "Submit"}
           </Button>
           <DialogClose asChild>
-            <Button variant="outline">Close</Button>
+            <Button variant="outline" onClick={() => {
+              setValues({});
+              setError(null);
+            }}>Close</Button>
           </DialogClose>
         </DialogFooter>
       </DialogContent>

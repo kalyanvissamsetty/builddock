@@ -1,11 +1,28 @@
-//const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+/* eslint-disable @typescript-eslint/no-explicit-any */
+export class ApiError extends Error {
+  status: number;
+  code?: string;
+  redirectTo?: string;
+  data?: any;
+
+  constructor(message: string, status: number, data?: any) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.data = data;
+    this.code = data?.code;
+    this.redirectTo = data?.redirectTo;
+  }
+}
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const isFormData = init?.body instanceof FormData;
+
   let API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
-  if (window.origin.includes("kalyanv.space")) {
-    API_BASE = "https://api.kalyanv.space:444";
+  if (typeof window !== "undefined" && window.origin.includes("themosaiccompany")) {
+    API_BASE = "https://preview-api.themosaiccompany.com:444";
   }
+
   async function doFetch(): Promise<Response> {
     return fetch(`${API_BASE}${path}`, {
       ...init,
@@ -34,12 +51,15 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   }
 
   if (!res.ok) {
-    let msg = `Request failed: ${res.status}`;
+    let data: any = null;
     try {
-      const data = await res.json();
-      msg = data?.message || msg;
-    } catch { }
-    throw new Error(msg);
+      data = await res.json();
+    } catch {
+      // ignore
+    }
+
+    const msg = data?.message || `Request failed: ${res.status}`;
+    throw new ApiError(msg, res.status, data);
   }
 
   if (res.status === 204) return undefined as T;

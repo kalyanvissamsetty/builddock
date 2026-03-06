@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/auth/useAuth";
-import { Me } from "@/components/lib/auth";
 
 export default function ViewerHome() {
   const [builds, setBuilds] = useState<AssignedBuild[]>([]);

@@ -7,9 +7,12 @@ export type Me = {
   role: Role;
 };
 
-
 import { serverApiFetch } from "./serverApi";
 
-export async function getMe() {
-  return serverApiFetch<Me>("/api/auth/me");
+export async function getMe(): Promise<Me | null> {
+  try {
+    return await serverApiFetch<Me>("/api/auth/me");
+  } catch {
+    return null;
+  }
 }

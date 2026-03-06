@@ -4,6 +4,7 @@ export type NavItem = {
   label: string;
   href: string;
   roles: Role[];
+  children? : NavItem[]
 };
 
 export const NAV_ITEMS: NavItem[] = [
@@ -13,9 +14,43 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ["ADMIN"],
   },
   {
-    label: "Upload Build",
-    href: "/uploadbuild",
+    label: "Builds",
     roles: ["ADMIN", "DEV"],
+    href: "/builds",
+    children: [
+      {
+        label: "Upload Build",
+        href: "/uploadbuild",
+        roles: ["ADMIN"],
+      },
+      {
+        label: "Delete Build",
+        href: "/deletebuild",
+        roles: ["ADMIN"],
+      },
+    ],
+  },
+  {
+    label: "Users",
+    roles: ["ADMIN", "DEV"],
+    href: "/users",
+    children: [
+      {
+        label: "Add Email Domain",
+        href: "/addemaildomain",
+        roles: ["ADMIN"],
+      },
+      {
+        label: "Add Users",
+        href: "/addusers",
+        roles: ["ADMIN"],
+      },
+      {
+        label: "Promote Users",
+        href: "/promoteusers",
+        roles: ["ADMIN"],
+      }
+    ],
   },
   {
     label: "Update Versions",
@@ -23,8 +58,13 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ["ADMIN", "DEV"],
   },
   {
-    label: "Promote Users",
-    href: "/promoteusers",
-    roles: ["ADMIN"],
+    label: "Projects",
+    href: "/manage-projects",
+    roles: ["ADMIN", "DEV"],
+  },
+  {
+    label: "Environments",
+    href: "/manage-environments",
+    roles: ["ADMIN", "DEV"],
   }
 ];

@@ -64,7 +64,7 @@ export default function SignupPage() {
     <div className="flex flex-col gap-4 min-h-screen items-center justify-center px-4">
       <Image
         src={logo}
-        alt="BuildDock Logo"
+        alt="Logo"
         width={150}
         height={10}
         priority
