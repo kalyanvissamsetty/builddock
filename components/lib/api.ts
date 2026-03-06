@@ -23,7 +23,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     API_BASE = "https://preview-api.themosaiccompany.com:444";
   }
   else if (typeof window !== "undefined" && window.origin.includes("timsstudio")) {
-    API_BASE = "https://api.timsstudio.com";
+    API_BASE = "https://api.timsstudio.tech";
   }
 
   async function doFetch(): Promise<Response> {

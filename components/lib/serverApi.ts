@@ -5,7 +5,7 @@ if (typeof window !== "undefined" && window.origin.includes("themosaiccompany"))
   API_BASE = "https://preview-api.themosaiccompany.com:444";
 }
 else if(typeof window !== "undefined" && window.origin.includes("timsstudio")) {
-  API_BASE = "https://api.timsstudio.com";
+  API_BASE = "https://api.timsstudio.tech";
 }
 async function buildCookieHeader() {
   const cookieStore = await cookies();

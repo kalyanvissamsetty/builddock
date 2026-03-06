@@ -102,7 +102,7 @@ export default function ViewerHome() {
                         API_BASE = "https://preview-api.themosaiccompany.com:444";
                       }
                       else if (typeof window !== "undefined" && window.origin.includes("timsstudio")) {
-                        API_BASE = "https://api.timsstudio.com";
+                        API_BASE = "https://api.timsstudio.tech";
                       }
                       const backendUrl = `${API_BASE}${publicUrl}`;
                       window.open(backendUrl, "_blank");
@@ -120,7 +120,7 @@ export default function ViewerHome() {
                         API_BASE = "https://preview-api.themosaiccompany.com:444";
                       }
                       else if (typeof window !== "undefined" && window.origin.includes("timsstudio")) {
-                        API_BASE = "https://api.timsstudio.com";
+                        API_BASE = "https://api.timsstudio.tech";
                       }
                       const backendUrl = `${API_BASE}${publicUrl}`;
                       copyToClipboard(backendUrl, b.id);
