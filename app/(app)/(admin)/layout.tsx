@@ -5,10 +5,11 @@ import { AppSidebar } from "@/components/AppSidebar";
 interface AdminLayoutProps {
   children: React.ReactNode;
 }
+export const dynamic = "force-dynamic";
 
 export default async function AdminLayout({ children }: AdminLayoutProps) {
   const me = await getMe();
-
+  if(!me) redirect("/login")
   if (typeof me !== "object" || me === null) {
     redirect("/login")
   }

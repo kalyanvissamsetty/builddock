@@ -1,8 +1,6 @@
 import "../globals.css";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 
-
-
 export default async function RootLayout({
   children,
 }: {
