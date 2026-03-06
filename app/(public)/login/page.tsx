@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { Suspense, useState } from "react";
@@ -6,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { apiFetch } from "../../../components/lib/api";
+import { apiFetch, ApiError } from "../../../components/lib/api";
 import Image from "next/image";
 import logo from "@/public/logos/logo.png";
 import { Eye, EyeOff } from "lucide-react";
@@ -32,15 +33,12 @@ function LoginForm() {
         body: JSON.stringify({ email, password }),
       });
       router.replace("/");
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
-      if (e.code === "EMAIL_NOT_VERIFIED") {
-        router.replace(
-          `/verifyotp?email=${encodeURIComponent(email)}&reason=not-verified`,
-        );
-      } else {
-        setError(e.message || "Login failed");
+      if (e instanceof ApiError && e.code === "EMAIL_NOT_VERIFIED" && e.redirectTo) {
+        router.replace(e.redirectTo);
+        return;
       }
+      setError(e.message);
     } finally {
       setLoading(false);
     }
@@ -50,7 +48,7 @@ function LoginForm() {
     <div className="flex gap-4 flex-col min-h-screen items-center justify-center px-4">
       <Image
         src={logo}
-        alt="BuildDock Logo"
+        alt="Logo"
         width={150}
         height={10}
         priority

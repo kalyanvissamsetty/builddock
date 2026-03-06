@@ -37,7 +37,7 @@ export function AppSidebar({ me }: Props) {
                 <Link href="/" className="inline-flex items-center">
                     <Image
                         src={logo}
-                        alt="BuildDock Logo"
+                        alt="Logo"
                         width={120}
                         height={32}
                         priority

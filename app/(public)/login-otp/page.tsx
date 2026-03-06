@@ -73,7 +73,7 @@ function LoginOtpForm() {
         <div className="flex gap-4 flex-col min-h-screen items-center justify-center px-4">
             <Image
                 src={logo}
-                alt="BuildDock Logo"
+                alt="Logo"
                 width={150}
                 height={10}
                 priority

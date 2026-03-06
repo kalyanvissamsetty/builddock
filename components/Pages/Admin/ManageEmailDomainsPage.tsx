@@ -91,7 +91,7 @@ export default function ManageEmailDomainsPage() {
 
         const d = normalizeDomain(domainInput);
         if (!isValidDomain(d)) {
-            toast.error("Enter a valid domain (example: tims.group)");
+            toast.error("Enter a valid domain (example: themosaiccompany.com)");
             return;
         }
 
@@ -165,11 +165,11 @@ export default function ManageEmailDomainsPage() {
                                 <Input
                                     value={domainInput}
                                     onChange={(e) => setDomainInput(e.target.value)}
-                                    placeholder="tims.group"
+                                    placeholder="themosaiccompany.com"
                                     disabled={adding}
                                 />
                                 <p className="text-xs text-muted-foreground">
-                                    Add only the domain part. Example: tims.group
+                                    Add only the domain part. Example: themosaiccompany.com
                                 </p>
                             </div>
                             <Button type="submit" disabled={adding}>

@@ -27,7 +27,7 @@ export function Navbar({ me }: Props) {
           <Link href="/" className="text-lg font-semibold">
             <Image
               src={logo}
-              alt="BuildDock Logo"
+              alt="Logo"
               width={120}
               height={10}
               

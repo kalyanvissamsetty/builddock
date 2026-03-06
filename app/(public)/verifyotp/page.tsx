@@ -33,8 +33,6 @@ function VerifyOtpForm() {
   const [success, setSuccess] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
 
-  const autoTriggeredRef = useRef(false);
-
   const isLoginFlow = useMemo(() => {
     return reason === "otp-login" || reason === "invite";
   }, [reason]);
@@ -115,17 +113,6 @@ function VerifyOtpForm() {
     }
   }
 
-  // Auto resend ONLY for not-verified
-  useEffect(() => {
-    if (!email) return;
-    if (reason !== "not-verified") return;
-    if (autoTriggeredRef.current) return;
-
-    autoTriggeredRef.current = true;
-    void resendOtp();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reason, email]);
-
   async function logoutAndContinue() {
     if (!email) return;
 
@@ -198,7 +185,7 @@ function VerifyOtpForm() {
     <div className="flex flex-col gap-4 min-h-screen items-center justify-center px-4">
       <Image
         src={logo}
-        alt="BuildDock Logo"
+        alt="Logo"
         width={150}
         height={10}
         priority
@@ -220,7 +207,7 @@ function VerifyOtpForm() {
     <div className="flex flex-col gap-4 min-h-screen items-center justify-center px-4">
       <Image
         src={logo}
-        alt="BuildDock Logo"
+        alt="Logo"
         width={150}
         height={10}
         priority
@@ -260,7 +247,7 @@ function VerifyOtpForm() {
     <div className="flex flex-col gap-4 min-h-screen items-center justify-center px-4">
       <Image
         src={logo}
-        alt="BuildDock Logo"
+        alt="Logo"
         width={150}
         height={10}
         priority

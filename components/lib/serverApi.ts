@@ -10,12 +10,39 @@ async function buildCookieHeader() {
     .join("; ");
 }
 
-async function fetchWithCookies(path: string, init?: RequestInit) {
-  if (!API_BASE) {
-    throw new Error("NEXT_PUBLIC_API_BASE_URL is not set");
+function mergeSetCookieIntoCookieHeader(existing: string, setCookieHeader: string | null) {
+  if (!setCookieHeader) return existing;
+
+  // set-cookie can be multiple cookies; Next fetch may combine them.
+  // We only need name=value parts.
+  const parts = setCookieHeader
+    .split(/,(?=[^;]+=[^;]+)/g) // split cookies safely
+    .map((c) => c.split(";")[0].trim()) // keep name=value
+    .filter(Boolean);
+
+  // Merge into map
+  const map = new Map<string, string>();
+  existing
+    .split(";")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .forEach((pair) => {
+      const idx = pair.indexOf("=");
+      if (idx > 0) map.set(pair.slice(0, idx), pair.slice(idx + 1));
+    });
+
+  for (const nv of parts) {
+    const idx = nv.indexOf("=");
+    if (idx > 0) map.set(nv.slice(0, idx), nv.slice(idx + 1));
   }
 
-  const cookieHeader = await buildCookieHeader();
+  return Array.from(map.entries())
+    .map(([k, v]) => `${k}=${v}`)
+    .join("; ");
+}
+
+async function fetchWithCookieHeader(path: string, cookieHeader: string, init?: RequestInit) {
+  if (!API_BASE) throw new Error("NEXT_PUBLIC_API_BASE_URL is not set");
 
   return fetch(`${API_BASE}${path}`, {
     ...init,
@@ -28,19 +55,25 @@ async function fetchWithCookies(path: string, init?: RequestInit) {
 }
 
 export async function serverApiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  // 1st attempt
-  let res = await fetchWithCookies(path, init);
+  // 1) initial cookies from incoming request
+  let cookieHeader = await buildCookieHeader();
 
-  // If unauthorized, try refresh once then retry original request
+  // 2) first attempt
+  let res = await fetchWithCookieHeader(path, cookieHeader, init);
+
+  // 3) if unauthorized, refresh once
   if (res.status === 401) {
-    // Try refresh
-    const refreshRes = await fetchWithCookies("/api/auth/refresh", {
+    const refreshRes = await fetchWithCookieHeader("/api/auth/refresh", cookieHeader, {
       method: "POST",
     });
 
-    // If refresh works, retry original request
     if (refreshRes.ok) {
-      res = await fetchWithCookies(path, init);
+      // IMPORTANT: merge new cookies set by backend refresh into our cookie header for retry
+      const setCookie = refreshRes.headers.get("set-cookie");
+      cookieHeader = mergeSetCookieIntoCookieHeader(cookieHeader, setCookie);
+
+      // retry original request with refreshed cookies
+      res = await fetchWithCookieHeader(path, cookieHeader, init);
     }
   }
 
@@ -49,16 +82,11 @@ export async function serverApiFetch<T>(path: string, init?: RequestInit): Promi
     try {
       const data = await res.json();
       msg = data?.message || msg;
-    } catch {
-      // ignore
-    }
+    } catch { }
     throw new Error(msg);
   }
 
-  // Handle 204
-  if (res.status === 204) {
-    return undefined as T;
-  }
+  if (res.status === 204) return undefined as T;
 
   return res.json() as Promise<T>;
 }
