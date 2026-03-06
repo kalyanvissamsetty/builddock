@@ -21,15 +21,16 @@ export function Navbar({ me }: Props) {
     const router = useRouter();
   return (
     <header className="w-full border-b">
-      <div className="flex items-center justify-between border-b px-6 py-4">
+      <div className="flex items-center justify-between border-b px-6 py-1">
         {/* Left */}
         <div className="flex items-center gap-10">
           <Link href="/" className="text-lg font-semibold">
             <Image
               src={logo}
               alt="BuildDock Logo"
-              width={90}
+              width={120}
               height={10}
+              
               priority
             />
           </Link>

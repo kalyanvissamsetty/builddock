@@ -86,13 +86,11 @@ export function ViewerAccessPage() {
     if (envId) setSelectedEnvId(envId);
   }
   function resetForm() {
+    setEnvs([]);
+    setVersions([]);
     setSelectedProjectId(null);
     setSelectedEnvId(null);
     setSelectedVersionId(null);
-
-    setEnvs([]);
-    setVersions([]);
-
     setError(null);
   }
   async function refreshVersions(
@@ -109,8 +107,17 @@ export function ViewerAccessPage() {
   }
 
   useEffect(() => {
+    setProjects([]);
+    setEnvs([]);
+    setVersions([]);
+    setSelectedProjectId(null);
+    setSelectedEnvId(null);
+    setSelectedVersionId(null);
+
+    if (!viewerId) return;
+
     refreshProjects().catch(console.error);
-  }, []);
+  }, [viewerId]);
 
   useEffect(() => {
     if (!selectedProjectId) return;
@@ -133,11 +140,13 @@ export function ViewerAccessPage() {
     if (!viewerId || !selectedVersionId) return;
 
     setLoading(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const response:any = await apiFetch("/api/admin/viewer-access", {
       method: "POST",
       body: JSON.stringify({ userId: viewerId, versionId: selectedVersionId }),
     });
     if (response?.assigned) {
+      resetForm()
       toast.success("Build assigned");
     } else {
       toast.info(response.message);
@@ -148,7 +157,7 @@ export function ViewerAccessPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 px-4 py-6">
+    <div className="mx-auto max-w-6xl space-y-8 px-4">
       {/* Page Header */}
       <div>
         <h1 className="text-2xl font-semibold">Assign Build Access</h1>
@@ -164,7 +173,7 @@ export function ViewerAccessPage() {
           <h2 className="text-lg font-medium">Assignment</h2>
 
           <div className="space-y-4">
-            <ViewerSelect value={viewerId} onChange={setViewerId} />
+            <ViewerSelect className="flex flex-row max-w-xs w-full gap-4" value={viewerId} onChange={setViewerId} />
 
             <ProjectSelect
               value={selectedProjectId ? String(selectedProjectId) : undefined}

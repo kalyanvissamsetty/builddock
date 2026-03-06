@@ -1,50 +1,90 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useState } from "react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { apiFetch } from "@/components/lib/api";
+import { cn } from "@/components/lib/utils";
 
-export function ViewerSelect({
-  value,
-  onChange,
-}: {
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox";
+import { useEffect, useState } from "react";
+
+type Viewer = {
+  id: number;
+  email: string;
+  name?: string | null;
+  role?: string;
+};
+
+type Props = {
   value: number | null;
   onChange: (id: number) => void;
-}) {
-  const [viewers, setViewers] = useState<any[]>([]);
+  className?: string;
+};
+
+export function ViewerSelect({ value, onChange, className }: Props) {
+  const [viewers, setViewers] = useState<Viewer[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    apiFetch("/api/admin/users").then((data) => {
-      if (Array.isArray(data)) {
-        setViewers(data.filter((u: any) => u && u.role === "VIEWER"));
-      } else {
-        setViewers([]);
+    let mounted = true;
+
+    async function loadViewers() {
+      setLoading(true);
+      try {
+        const data = await apiFetch<Viewer[]>("/api/admin/users");
+        const nonAdmin = data.filter((u) => u.role !== "ADMIN");
+        if (mounted) setViewers(nonAdmin);
+      } finally {
+        if (mounted) setLoading(false);
       }
-    });
+    }
+
+    loadViewers();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
+  const selectedViewer = viewers.find((v) => v.id === value) ?? null;
+
   return (
-    <Select
-      value={value?.toString()}
-      onValueChange={(v) => onChange(Number(v))}
-    >
-      <SelectTrigger>
-        <SelectValue placeholder="Select Viewer" />
-      </SelectTrigger>
-      <SelectContent>
-        {viewers.map((v) => (
-          <SelectItem key={v.id} value={v.id.toString()}>
-            {v.email}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <div className={cn("w-full", className)}>
+      <Combobox
+        items={viewers}
+        value={selectedViewer}
+        onValueChange={(viewer) => {
+          if (!viewer) return;
+          onChange(viewer.id);
+        }}
+        itemToStringLabel={(viewer) => {
+          console.log(viewer.email + " - itemtostring")
+          return viewer.email}}
+      >
+        <ComboboxInput
+          placeholder={loading ? "Loading viewers..." : "Select viewer"}
+          disabled={loading}
+          className="w-full"
+        />
+
+        <ComboboxContent>
+          <ComboboxEmpty>No viewer found.</ComboboxEmpty>
+
+          <ComboboxList>
+            {(viewer) => (
+              
+              <ComboboxItem key={viewer.id} value={viewer}>
+                {viewer.name ? `${viewer.name} - ${viewer.email}` : viewer.email}
+              </ComboboxItem>
+            )}
+          </ComboboxList>
+        </ComboboxContent>
+      </Combobox>
+    </div>
   );
 }

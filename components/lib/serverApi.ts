@@ -2,29 +2,62 @@ import { cookies } from "next/headers";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-export async function serverApiFetch<T>(path: string): Promise<T> {
-  if (!API_BASE) {
-    throw new Error(
-      "NEXT_PUBLIC_API_BASE_URL is not set. Set it in .env.local for server API calls."
-    );
-  }
+async function buildCookieHeader() {
   const cookieStore = await cookies();
-
-  const cookieHeader = cookieStore
+  return cookieStore
     .getAll()
     .map((c) => `${c.name}=${c.value}`)
     .join("; ");
+}
 
-  const res = await fetch(`${API_BASE}${path}`, {
+async function fetchWithCookies(path: string, init?: RequestInit) {
+  if (!API_BASE) {
+    throw new Error("NEXT_PUBLIC_API_BASE_URL is not set");
+  }
+
+  const cookieHeader = await buildCookieHeader();
+
+  return fetch(`${API_BASE}${path}`, {
+    ...init,
     headers: {
+      ...(init?.headers ?? {}),
       Cookie: cookieHeader,
     },
     cache: "no-store",
   });
+}
+
+export async function serverApiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  // 1st attempt
+  let res = await fetchWithCookies(path, init);
+
+  // If unauthorized, try refresh once then retry original request
+  if (res.status === 401) {
+    // Try refresh
+    const refreshRes = await fetchWithCookies("/api/auth/refresh", {
+      method: "POST",
+    });
+
+    // If refresh works, retry original request
+    if (refreshRes.ok) {
+      res = await fetchWithCookies(path, init);
+    }
+  }
 
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.message || "Unauthorized");
+    let msg = `Request failed: ${res.status}`;
+    try {
+      const data = await res.json();
+      msg = data?.message || msg;
+    } catch {
+      // ignore
+    }
+    throw new Error(msg);
+  }
+
+  // Handle 204
+  if (res.status === 204) {
+    return undefined as T;
   }
 
   return res.json() as Promise<T>;
