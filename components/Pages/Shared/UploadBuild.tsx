@@ -10,12 +10,13 @@ import { apiFetch } from "../../lib/api";
 import { VersionSelect } from "../../upload/version-select";
 import { UploadSuccess } from "../../upload/dialog/UploadSuccess";
 import { Project, Environment, Version, UploadBuildResponse } from "@/types";
+import { Textarea } from "@/components/ui/textarea";
 
 export function UploadBuild() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [envs, setEnvs] = useState<Environment[]>([]);
   const [versions, setVersions] = useState<Version[]>([]);
-
+  const [releaseNotes, setReleaseNotes] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(
     null,
   );
@@ -102,7 +103,7 @@ export function UploadBuild() {
     setError(null);
     setSuccessUrl(null);
 
-    if (!selectedEnvId || !selectedProjectId || !selectedVersionId || !file) {
+    if (!selectedEnvId || !selectedProjectId || !selectedVersionId || !file || !releaseNotes) {
       setError("All fields are required");
       return;
     }
@@ -112,7 +113,7 @@ export function UploadBuild() {
     formData.append("projectId", selectedProjectId.toString());
     formData.append("environmentId", selectedEnvId.toString());
     formData.append("versionId", selectedVersionId.toString());
-
+    formData.append("releaseNotes", releaseNotes);
     try {
       setIsUploading(true);
 
@@ -122,7 +123,7 @@ export function UploadBuild() {
       });
 
       setSuccessUrl(data.publicUrl);
-
+      setReleaseNotes("");
       setSuccessDialog(true);
       setBuildActivated(data.isThisVersionDefault);
       //resetForm();
@@ -193,6 +194,12 @@ export function UploadBuild() {
             </a>
           </p>
         )}
+        <Textarea
+          value={releaseNotes}
+          onChange={(e) => setReleaseNotes(e.target.value)}
+          placeholder="Release notes for this upload..."
+          className="min-h-[120px] max-w-[400px]"
+        />
         <FileDropzone file={file} onChange={setFile} />
         <div className="flex flex-row gap-12">
           <Button
@@ -202,7 +209,8 @@ export function UploadBuild() {
               !selectedProjectId ||
               !selectedEnvId ||
               !selectedVersionId ||
-              !file
+              !file ||
+              !releaseNotes
             }
           >
             {isUploading ? "Uploading..." : "Upload Build"}

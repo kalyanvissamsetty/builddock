@@ -1,19 +1,93 @@
 "use client";
 
 import { AssignedBuild } from "../../../types";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/components/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/auth/useAuth";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+type ExtendedAssignedBuild = AssignedBuild & {
+  // optional fields from backend (safe if not present)
+  version: AssignedBuild["version"] & {
+    releaseNotes?: string | null;
+    releaseNotesUpdatedAt?: string | null;
+
+    lastUploadedAt?: string | null;
+    lastUploadedByUser?: { name?: string | null; email: string } | null;
+  };
+};
+
+function getApiBase() {
+  let API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+  if (typeof window !== "undefined") {
+    const origin = window.location.origin;
+
+    if (origin.includes("themosaiccompany")) {
+      API_BASE = "https://preview-api.themosaiccompany.com:444";
+    } else if (origin.includes("timsstudio")) {
+      API_BASE = "https://api.timsstudio.tech";
+    }
+  }
+
+  return API_BASE;
+}
+
+function getTimeZoneInfo() {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    const parts = new Intl.DateTimeFormat(undefined, {
+      timeZone: tz,
+      timeZoneName: "short",
+    }).formatToParts(new Date());
+
+    const tzShort = parts.find((p) => p.type === "timeZoneName")?.value || tz;
+
+    return { tz, tzShort };
+  } catch {
+    return { tz: "UTC", tzShort: "UTC" };
+  }
+}
+
+function formatLocalDateTime(iso: string) {
+  try {
+    const { tz, tzShort } = getTimeZoneInfo();
+    const d = new Date(iso);
+
+    const formatted = new Intl.DateTimeFormat(undefined, {
+      timeZone: tz,
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    }).format(d);
+
+    return `${formatted} (${tzShort})`;
+  } catch {
+    return iso;
+  }
+}
 
 export default function ViewerHome() {
-  const [builds, setBuilds] = useState<AssignedBuild[]>([]);
+  const [builds, setBuilds] = useState<ExtendedAssignedBuild[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const { me } = useAuth();
+
   useEffect(() => {
     loadBuilds();
   }, []);
@@ -21,7 +95,7 @@ export default function ViewerHome() {
   async function loadBuilds() {
     try {
       setLoading(true);
-      const data = await apiFetch<AssignedBuild[]>("/api/viewer/builds", {
+      const data = await apiFetch<ExtendedAssignedBuild[]>("/api/viewer/builds", {
         method: "GET",
       });
 
@@ -30,7 +104,7 @@ export default function ViewerHome() {
       }
 
       setBuilds(data);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       setError(e?.message ?? "Failed to load builds");
     } finally {
@@ -44,6 +118,8 @@ export default function ViewerHome() {
     setTimeout(() => setCopiedId(null), 2000);
   }
 
+  const tzInfo = useMemo(() => getTimeZoneInfo(), []);
+
   if (loading) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-10">
@@ -54,11 +130,10 @@ export default function ViewerHome() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-8 px-4 py-8">
-      {/* Header */}
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold">My Assigned Builds</h1>
         <p className="text-sm text-muted-foreground">
-          Hi <b>{me?.name}</b>, You can access only the builds assigned to you.
+          Hi <b>{me?.name}</b>, you can access only the builds assigned to you.
         </p>
       </div>
 
@@ -68,8 +143,7 @@ export default function ViewerHome() {
         <p className="text-sm text-muted-foreground">No builds assigned yet.</p>
       )}
 
-      {/* Grid */}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 ">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {builds.map((b) => {
           const project = b.version.environment.project.name;
           const projectSlug = b.version.environment.project.slug;
@@ -78,6 +152,22 @@ export default function ViewerHome() {
           const version = b.version.name;
 
           const publicUrl = `/public/${projectSlug}/${envSlug}/${version}`;
+          const backendUrl = `${getApiBase()}${publicUrl}`;
+
+          const uploadedAtIso =
+            b.version.lastUploadedAt || b.version.releaseNotesUpdatedAt || null;
+
+          const uploadedAtText = uploadedAtIso
+            ? formatLocalDateTime(uploadedAtIso)
+            : "Not available";
+
+          const uploadedBy =
+            b.version.lastUploadedByUser?.name?.trim() ||
+            b.version.lastUploadedByUser?.email ||
+            "Not available";
+
+          const releaseNotesText =
+            (b.version.releaseNotes ?? "").trim() || "No release notes provided.";
 
           return (
             <Card
@@ -85,28 +175,27 @@ export default function ViewerHome() {
               className="flex flex-col justify-between hover:shadow-lg transition"
             >
               <CardHeader className="space-y-2">
-                <CardTitle className="text-base font-sans font-normal">{project}</CardTitle>
+                <CardTitle className="text-base font-sans font-normal">
+                  {project}
+                </CardTitle>
+
                 <div className="flex flex-wrap gap-2 text-xs">
-                  <Badge variant="secondary" className="font-sans font-normal">{env}</Badge>
-                  <Badge variant="outline" className="font-sans font-normal">{version}</Badge>
+                  <Badge variant="secondary" className="font-sans font-normal">
+                    {env}
+                  </Badge>
+                  <Badge variant="outline" className="font-sans font-normal">
+                    {version}
+                  </Badge>
                 </div>
+
+                
               </CardHeader>
 
               <CardContent className="space-y-4">
                 <div className="flex flex-col gap-2">
                   <Button
                     className="w-full"
-                    onClick={() => {
-                      let API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
-                      if (typeof window !== "undefined" && window.origin.includes("themosaiccompany")) {
-                        API_BASE = "https://preview-api.themosaiccompany.com:444";
-                      }
-                      else if (typeof window !== "undefined" && window.origin.includes("timsstudio")) {
-                        API_BASE = "https://api.timsstudio.tech";
-                      }
-                      const backendUrl = `${API_BASE}${publicUrl}`;
-                      window.open(backendUrl, "_blank");
-                    }}
+                    onClick={() => window.open(backendUrl, "_blank")}
                   >
                     Open Build
                   </Button>
@@ -114,20 +203,41 @@ export default function ViewerHome() {
                   <Button
                     variant="outline"
                     className="w-full"
-                    onClick={() => {
-                      let API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
-                      if (typeof window !== "undefined" && window.origin.includes("themosaiccompany")) {
-                        API_BASE = "https://preview-api.themosaiccompany.com:444";
-                      }
-                      else if (typeof window !== "undefined" && window.origin.includes("timsstudio")) {
-                        API_BASE = "https://api.timsstudio.tech";
-                      }
-                      const backendUrl = `${API_BASE}${publicUrl}`;
-                      copyToClipboard(backendUrl, b.id);
-                    }}
+                    onClick={() => copyToClipboard(backendUrl, b.id)}
                   >
                     {copiedId === b.id ? "Copied!" : "Copy URL"}
                   </Button>
+
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="secondary" className="w-full">
+                        Release Notes
+                      </Button>
+                    </DialogTrigger>
+
+                    <DialogContent className="max-w-lg">
+                      <DialogHeader>
+                        <DialogTitle>Release Notes</DialogTitle>
+                        <div className="text-xs text-muted-foreground pt-1 space-y-1">
+                          
+                          <div>
+                            Uploaded on:{" "}
+                            <span className="text-foreground">{uploadedAtText}</span>
+                          </div>
+                          <div>
+                            Uploaded by:{" "}
+                            <span className="text-foreground">{uploadedBy}</span>
+                          </div>
+                        </div>
+                      </DialogHeader>
+
+                      <ScrollArea className="max-h-[420px] pr-3">
+                        <div className="whitespace-pre-wrap text-sm text-muted-foreground">
+                          {releaseNotesText}
+                        </div>
+                      </ScrollArea>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               </CardContent>
             </Card>
