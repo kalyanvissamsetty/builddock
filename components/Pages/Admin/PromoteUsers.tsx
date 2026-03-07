@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Role } from "@/components/lib/auth";
+import { Role } from "@/types";
 
 type User = {
   id: number;

@@ -1,10 +1,11 @@
+import { RequireRoleClient } from "@/components/auth/RequireRoleClient";
 import { ViewerAccessPage } from "@/components/Pages/Admin/ViewerAccessPage";
 
 function Page() {
   return (
-    <div>
+    <RequireRoleClient allow={["ADMIN"]}>
       <ViewerAccessPage />
-    </div>
+    </RequireRoleClient>
   );
 }
 

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
-import type { Role } from "@/components/lib/auth";
 import { useAuth } from "./useAuth";
+import { Role } from "@/types";
 
 export function RequireRoleClient({
     allow,
@@ -15,16 +15,24 @@ export function RequireRoleClient({
     const { me, loading } = useAuth();
     const router = useRouter();
 
+    const allowKey = useMemo(() => allow.join(","), [allow]);
+    const redirectedRef = useRef(false);
+
     useEffect(() => {
         if (loading) return;
+        if (redirectedRef.current) return;
+
         if (!me) {
+            redirectedRef.current = true;
             router.replace("/login");
             return;
         }
+
         if (!allow.includes(me.role)) {
+            redirectedRef.current = true;
             router.replace("/404");
         }
-    }, [loading, me, allow, router]);
+    }, [loading, me, allowKey, router]);
 
     if (loading) return null;
     if (!me) return null;

@@ -7,9 +7,9 @@ import { usePathname, useRouter } from "next/navigation";
 
 import logo from "@/public/logos/logo.png";
 import { apiFetch } from "./lib/api";
-import { Me } from "./lib/auth";
 import { NAV_ITEMS } from "./navbar/navConfig";
 import { Button } from "./ui/button";
+import { Me } from "@/types";
 
 type Props = {
     me: Me;

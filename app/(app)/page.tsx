@@ -1,15 +1,9 @@
 import { redirect } from "next/navigation";
-import { getMe, Me } from "@/components/lib/auth";
 import { RoleGate } from "@/components/auth/RoleGate";
+import { useAuth } from "@/components/auth/useAuth";
 
-export default async function HomePage() {
-  let me: Me | null = null;
-
-  try {
-    me = await getMe();
-  } catch {
-    redirect("/login");
-  }
+export default function HomePage() {
+  const { me } = useAuth();  
 
   if (!me || typeof me !== "object") {
     redirect("/login");

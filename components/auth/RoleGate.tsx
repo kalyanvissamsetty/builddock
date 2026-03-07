@@ -1,5 +1,5 @@
+import { Me } from "@/types";
 import { redirect } from "next/navigation";
-import { Me } from "../lib/auth";
 
 type Props = {
   me: Me;

@@ -1,4 +1,4 @@
-import { Role } from "../lib/auth";
+import { Role } from "@/types";
 
 export type NavItem = {
   label: string;

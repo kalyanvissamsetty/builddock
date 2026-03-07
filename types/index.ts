@@ -4,6 +4,15 @@ export interface Project {
   slug: string;
   createdAt: string;
 }
+export type Role = "ADMIN" | "MANAGER" | "DEV" | "QA" | "VIEWER";
+
+export type Me = {
+  id: number;
+  email: string;
+  name: string;
+  role: Role;
+};
+
 export interface Environment {
   id: number;
   name: string;

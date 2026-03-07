@@ -1,12 +1,12 @@
 "use client";
 import Link from "next/link";
-import { Me } from "../lib/auth";
 import { NAV_ITEMS } from "./navConfig";
 import { Button } from "../ui/button";
 import { usePathname, useRouter } from "next/navigation";
 import { apiFetch } from "../lib/api";
 import Image from "next/image";
 import logo from "@/public/logos/logo.png";
+import { Me } from "@/types";
 type Props = {
   me: Me;
 };
