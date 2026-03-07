@@ -11,7 +11,7 @@ export const NAV_ITEMS: NavItem[] = [
   {
     label: "Assign Build Access",
     href: "/vieweraccess",
-    roles: ["ADMIN"],
+    roles: ["ADMIN", "MANAGER"],
   },
   {
     label: "Builds",
@@ -32,23 +32,23 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     label: "Users",
-    roles: ["ADMIN", "DEV"],
+    roles: ["ADMIN","MANAGER" ,"DEV"],
     href: "/users",
     children: [
       {
         label: "Add Email Domain",
         href: "/addemaildomain",
-        roles: ["ADMIN"],
+        roles: ["ADMIN", "MANAGER"],
       },
       {
         label: "Add Users",
         href: "/addusers",
-        roles: ["ADMIN"],
+        roles: ["ADMIN", "MANAGER"],
       },
       {
         label: "Promote Users",
         href: "/promoteusers",
-        roles: ["ADMIN"],
+        roles: ["ADMIN", "MANAGER"],
       }
     ],
   },

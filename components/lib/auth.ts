@@ -1,4 +1,4 @@
-export type Role = "ADMIN" | "DEV" | "QA" | "VIEWER";
+export type Role = "ADMIN" | "MANAGER" | "DEV" | "QA" | "VIEWER";
 
 export type Me = {
   id: number;

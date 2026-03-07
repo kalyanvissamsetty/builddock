@@ -10,10 +10,12 @@ export function RoleGate({ me }: Props) {
   switch (me.role) {
     case "ADMIN":
       return redirect("/vieweraccess")
+    case "MANAGER":
+      return redirect("/vieweraccess")
     case "DEV":
       return redirect("/uploadbuild");
     case "QA":
-      return redirect("/viewbuilds");
+      return redirect("/uploadbuild");
     case "VIEWER":
       return redirect("/viewbuilds");
     default:

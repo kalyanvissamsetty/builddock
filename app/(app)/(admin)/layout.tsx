@@ -14,7 +14,7 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
     redirect("/login")
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  else if ((me as any).role !== "ADMIN") return notFound();
+  else if ((me as any).role === "VIEWER") return notFound();
 
   return (
     <div className="h-screen overflow-hidden">
