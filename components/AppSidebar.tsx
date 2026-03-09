@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import {  useState } from "react";
+import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -10,7 +11,8 @@ import { apiFetch } from "./lib/api";
 import { NAV_ITEMS } from "./navbar/navConfig";
 import { Button } from "./ui/button";
 import { Me } from "@/types";
-
+import { canAccessPath } from "./auth/access";
+import { useAuth } from "./auth/useAuth";
 type Props = {
     me: Me;
 };
@@ -18,18 +20,22 @@ type Props = {
 export function AppSidebar({ me }: Props) {
     const pathname = usePathname();
     const router = useRouter();
-
+    const {logout} = useAuth()
     const [openMenu, setOpenMenu] = useState<string | null>(null);
 
-    const visibleItems = NAV_ITEMS.filter((item) =>
-        item.roles.includes(me.role)
-    );
+    const visibleItems = NAV_ITEMS.filter((item) => {
+        if (!item.href) return true;
+        return canAccessPath(me.role, item.href);
+    });
 
     async function handleLogout() {
-        await apiFetch("/api/auth/logout", { method: "POST" });
-        router.replace("/login");
+        try {
+            await logout();
+        } finally {
+            router.replace("/login");
+        }
     }
-
+    
     return (
         <aside className="h-full bg-background flex flex-col border-r">
             {/* Logo */}
@@ -52,9 +58,10 @@ export function AppSidebar({ me }: Props) {
                     // ---------- DROPDOWN ITEM ----------
                     if (item.children) {
                         // Filter children by role
-                        const visibleChildren = item.children.filter((child) =>
-                            child.roles.includes(me.role)
-                        );
+                        const visibleChildren = item.children.filter((child) => {
+                            if (!child.href) return true;
+                            return canAccessPath(me.role, child.href);
+                        });
 
                         // If no children are visible, hide the entire parent
                         if (visibleChildren.length === 0) {
@@ -81,12 +88,7 @@ export function AppSidebar({ me }: Props) {
                                     ].join(" ")}
                                 >
                                     <span>{item.label}</span>
-                                    <span
-                                        className={`transition-transform ${isOpen ? "rotate-90" : ""
-                                            }`}
-                                    >
-                                        ▶
-                                    </span>
+                                    <ChevronRight className={`h-4 w-4 transition-transform ${isOpen ? "rotate-90" : ""}`} />
                                 </button>
 
                                 {/* Children */}
@@ -137,32 +139,16 @@ export function AppSidebar({ me }: Props) {
             </nav>
 
             {/* Footer */}
-            <div className="px-4 py-4 border-t">
-                {!me.id ? (
-                    <div className="space-y-2">
-                        <Button
-                            variant="outline"
-                            className="w-full"
-                            onClick={() => router.push("/login")}
-                        >
-                            Login
-                        </Button>
-                        <Button
-                            className="w-full"
-                            onClick={() => router.push("/signup")}
-                        >
-                            Get Started
-                        </Button>
+            <div className="px-4 py-4 border-t space-y-3">
+                <div className="text-xs text-muted-foreground">
+                    <div className="mt-1 inline-flex rounded-md border px-2 py-0.5 text-[11px]">
+                        {me.role}
                     </div>
-                ) : (
-                    <Button
-                        variant="outline"
-                        className="w-full"
-                        onClick={handleLogout}
-                    >
-                        Log Out
-                    </Button>
-                )}
+                </div>
+
+                <Button variant="outline" className="w-full" onClick={handleLogout}>
+                    Log Out
+                </Button>
             </div>
         </aside>
     );

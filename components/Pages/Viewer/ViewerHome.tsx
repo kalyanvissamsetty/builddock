@@ -15,6 +15,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { LoadingScreen } from "@/components/ui/LoadingScreen";
 
 type ExtendedAssignedBuild = AssignedBuild & {
   // optional fields from backend (safe if not present)
@@ -123,7 +124,7 @@ export default function ViewerHome() {
   if (loading) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-10">
-        <p className="text-sm text-muted-foreground">Loading builds...</p>
+        <LoadingScreen title="Loading builds" description="Fetching your assigned builds..." fullScreen={false} />
       </div>
     );
   }

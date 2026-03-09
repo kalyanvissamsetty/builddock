@@ -11,6 +11,8 @@ import { apiFetch, ApiError } from "../../../components/lib/api";
 import Image from "next/image";
 import logo from "@/public/logos/logo.png";
 import { Eye, EyeOff } from "lucide-react";
+import { defaultRouteForRole } from "@/components/auth/defaultRoute";
+import { useAuth } from "@/components/auth/useAuth";
 
 function LoginForm() {
   const router = useRouter();
@@ -21,6 +23,7 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const { refreshMe } = useAuth();
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -32,7 +35,8 @@ function LoginForm() {
         method: "POST",
         body: JSON.stringify({ email, password }),
       });
-      router.replace("/");
+      const user = await refreshMe();
+      if (user) router.replace(defaultRouteForRole(user.role));
     } catch (e: any) {
       if (e instanceof ApiError && e.code === "EMAIL_NOT_VERIFIED" && e.redirectTo) {
         router.replace(e.redirectTo);
@@ -109,7 +113,7 @@ function LoginForm() {
             </div>
             <p className="mt-2 text-center text-sm text-muted-foreground">
               Or{" "}
-              <a href="/login-otp" className="underline">
+              <a href="/otplogin" className="underline">
                 sign in with OTP
               </a>
             </p>

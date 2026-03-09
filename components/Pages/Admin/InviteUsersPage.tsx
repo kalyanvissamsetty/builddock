@@ -17,6 +17,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Role } from "@/types";
 
 type AllowedDomain = {
     id: number;
@@ -34,9 +35,8 @@ type Invite = {
     createdAt: string;
 };
 
-type Role = "VIEWER" | "DEV" | "QA";
 
-const ROLES: Role[] = ["VIEWER", "DEV", "QA"];
+const ROLES: Role[] = ["VIEWER", "MANAGER","DEV", "QA"];
 
 const LS_DOMAIN_KEY = "invite_selected_domain";
 const LS_ROLE_KEY = "invite_selected_role";

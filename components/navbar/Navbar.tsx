@@ -1,24 +1,26 @@
 "use client";
 import Link from "next/link";
-import { NAV_ITEMS } from "./navConfig";
 import { Button } from "../ui/button";
-import { usePathname, useRouter } from "next/navigation";
-import { apiFetch } from "../lib/api";
+import {  useRouter } from "next/navigation";
 import Image from "next/image";
 import logo from "@/public/logos/logo.png";
 import { Me } from "@/types";
+import { useAuth } from "../auth/useAuth";
 type Props = {
   me: Me;
 };
 
 export function Navbar({ me }: Props) {
-  const visibleItems = NAV_ITEMS.filter((item) => item.roles.includes(me.role));
-  const pathname = usePathname();
-    async function handleLogout() {
-        await apiFetch("/api/auth/logout", { method: "POST" });
-        router.replace("/login");
+  const { logout } = useAuth()
+
+  async function handleLogout() {
+    try {
+      logout()
+    } finally {
+      router.replace("/login");
     }
-    const router = useRouter();
+  }
+  const router = useRouter();
   return (
     <header className="w-full border-b">
       <div className="flex items-center justify-between border-b px-6 py-1">
@@ -30,12 +32,12 @@ export function Navbar({ me }: Props) {
               alt="Logo"
               width={120}
               height={10}
-              
+
               priority
             />
           </Link>
         </div>
-        <div className="hidden md:flex items-center gap-8 text-md">
+        {/* <div className="hidden md:flex items-center gap-8 text-md">
           {visibleItems.map(
             (item) =>
               pathname !== item.href && (
@@ -48,7 +50,7 @@ export function Navbar({ me }: Props) {
                 </Link>
               ),
           )}
-        </div>
+        </div> */}
         {/* Right */}
         {!me.id && (
           <div className="flex items-center gap-3">

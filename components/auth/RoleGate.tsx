@@ -1,11 +1,14 @@
+"use client"
+
 import { Me } from "@/types";
 import { redirect } from "next/navigation";
+import { useAuth } from "@/components/auth/useAuth";
 
-type Props = {
-  me: Me;
-};
 
-export function RoleGate({ me }: Props) {
+export function RoleGate() {
+  const { me, loading } = useAuth();
+  if (loading) return null;
+
   if (!me?.role) return null;
   switch (me.role) {
     case "ADMIN":

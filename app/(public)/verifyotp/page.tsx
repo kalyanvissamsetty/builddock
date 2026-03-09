@@ -12,12 +12,15 @@ import Image from "next/image";
 import logo from "@/public/logos/logo.png";
 import Link from "next/link";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { defaultRouteForRole } from "@/components/auth/defaultRoute";
+import { Me } from "@/types";
+import { useAuth } from "@/components/auth/useAuth";
 
-type Me = { id: number; email: string; role: string };
 
 function VerifyOtpForm() {
   const params = useSearchParams();
   const router = useRouter();
+  const { refreshMe } = useAuth();
 
   const email = (params.get("email") || "").trim().toLowerCase();
   const reason = params.get("reason") || "";
@@ -170,8 +173,9 @@ function VerifyOtpForm() {
 
       setSuccess(isLoginFlow ? "Logged in successfully" : "Verified successfully");
 
-      setTimeout(() => {
-        router.replace("/");
+      setTimeout(async () => {
+        const user = await refreshMe();
+        if (user) router.replace(defaultRouteForRole(user.role));
       }, 900);
     } catch (e: any) {
       setError(e.message || "Verification failed");

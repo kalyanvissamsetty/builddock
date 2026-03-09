@@ -8,7 +8,7 @@ type AuthContextType = {
   me: Me | null;
   loading: boolean;
   setMe: (me: Me | null) => void;
-  refreshMe: () => Promise<void>;
+  refreshMe: () => Promise<Me | null>;
   logout: () => Promise<void>;
 };
 
@@ -22,8 +22,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const user = await apiFetch<Me>("/api/auth/me", { method: "GET" });
       setMe(user);
+      return user;
     } catch {
       setMe(null);
+      return null;
     }
   }
 
@@ -73,3 +75,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
+
