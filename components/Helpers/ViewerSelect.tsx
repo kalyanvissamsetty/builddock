@@ -2,7 +2,7 @@
 
 import { apiFetch } from "@/components/lib/api";
 import { cn } from "@/components/lib/utils";
-
+import { Role } from "@/types";
 import {
   Combobox,
   ComboboxContent,
@@ -37,7 +37,7 @@ export function ViewerSelect({ value, onChange, className }: Props) {
       setLoading(true);
       try {
         const data = await apiFetch<Viewer[]>("/api/admin/users");
-        const nonAdmin = data.filter((u) => u.role !== "ADMIN");
+        const nonAdmin = data.filter((u) => u.role === "VIEWER");
         if (mounted) setViewers(nonAdmin);
       } finally {
         if (mounted) setLoading(false);
@@ -62,9 +62,7 @@ export function ViewerSelect({ value, onChange, className }: Props) {
           if (!viewer) return;
           onChange(viewer.id);
         }}
-        itemToStringLabel={(viewer) => {
-          console.log(viewer.email + " - itemtostring")
-          return viewer.email}}
+        itemToStringLabel={(viewer) => viewer.name ?? viewer.email}
       >
         <ComboboxInput
           placeholder={loading ? "Loading viewers..." : "Select viewer"}
@@ -79,7 +77,7 @@ export function ViewerSelect({ value, onChange, className }: Props) {
             {(viewer) => (
               
               <ComboboxItem key={viewer.id} value={viewer}>
-                {viewer.name ? `${viewer.name} - ${viewer.email}` : viewer.email}
+                {viewer.name ? `${viewer.name}` : viewer.email}
               </ComboboxItem>
             )}
           </ComboboxList>

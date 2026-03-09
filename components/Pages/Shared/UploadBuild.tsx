@@ -52,7 +52,7 @@ export function UploadBuild() {
 
     setEnvs([]);
     setVersions([]);
-
+    setReleaseNotes("");
     setFile(null);
     setError(null);
   }
