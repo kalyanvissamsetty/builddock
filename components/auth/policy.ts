@@ -9,7 +9,8 @@ export type RouteKey =
     | "manageenvironments"
     | "addemaildomain"
     | "addusers"
-    | "promoteusers";
+    | "promoteusers"
+    | "viewbuilds";
 
 export const ROUTE_POLICY: Record<RouteKey, Role[]> = {
     vieweraccess: ["ADMIN", "MANAGER"],
@@ -21,6 +22,7 @@ export const ROUTE_POLICY: Record<RouteKey, Role[]> = {
     addemaildomain: ["ADMIN", "MANAGER"],
     addusers: ["ADMIN", "MANAGER"],
     promoteusers: ["ADMIN", "MANAGER"],
+    viewbuilds: ["VIEWER"]
 };
 
 export function canAccess(role: Role, allowed: Role[]) {
