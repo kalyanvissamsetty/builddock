@@ -160,7 +160,7 @@ export function UploadBuild() {
           }}
           projects={projects}
           refreshProjects={refreshProjects}
-          showAddProject={true}
+          showAddProject={false}
         />
         <EnvironmentSelect
           value={selectedEnvId != null ? String(selectedEnvId) : undefined}
@@ -170,7 +170,7 @@ export function UploadBuild() {
           envs={envs}
           refreshEnvironemts={refreshEnvironemts}
           projectId={selectedProjectId ? selectedProjectId : undefined}
-          showAddEnvironment={true}
+          showAddEnvironment={false}
         />
 
         <VersionSelect
