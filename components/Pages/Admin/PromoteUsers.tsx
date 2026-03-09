@@ -20,7 +20,7 @@ type User = {
   role: Role | string;
 };
 
-const ROLES: Role[] = ["VIEWER", "MANAGER", "DEV", "QA"];
+const ROLES: Role[] = ["VIEWER", "MANAGER", "DEV"];
 const PAGE_SIZES = [5, 10, 20,] as const;
 
 function normalize(str: string) {

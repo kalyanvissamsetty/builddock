@@ -7,6 +7,10 @@ export type NavItem = {
 
 export const NAV_ITEMS: NavItem[] = [
   {
+    label: "View All Builds",
+    href: "/allbuilds",
+  },
+  {
     label: "Assign Build Access",
     href: "/vieweraccess",
   },
@@ -42,10 +46,10 @@ export const NAV_ITEMS: NavItem[] = [
       }
     ],
   },
-  {
-    label: "Update Versions",
-    href: "/updateversions",
-  },
+  // {
+  //   label: "Update Versions",
+  //   href: "/updateversions",
+  // },
   {
     label: "Projects",
     href: "/manageprojects",

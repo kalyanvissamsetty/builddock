@@ -36,7 +36,7 @@ type Invite = {
 };
 
 
-const ROLES: Role[] = ["VIEWER", "MANAGER","DEV", "QA"];
+const ROLES: Role[] = ["VIEWER", "MANAGER","DEV"];
 
 const LS_DOMAIN_KEY = "invite_selected_domain";
 const LS_ROLE_KEY = "invite_selected_role";
@@ -47,10 +47,6 @@ function isValidLocalPart(input: string) {
     if (v.includes(" ")) return false;
     if (v.includes("@")) return false;
     return /^[a-zA-Z0-9._+-]+$/.test(v);
-}
-
-function isRole(value: string): value is Role {
-    return value === "VIEWER" || value === "DEV" || value === "QA";
 }
 
 export default function InviteUsersPage() {
@@ -78,7 +74,7 @@ export default function InviteUsersPage() {
             if (savedDomain) setSelectedDomain(savedDomain);
 
             const savedRole = localStorage.getItem(LS_ROLE_KEY);
-            if (savedRole && isRole(savedRole)) setSelectedRole(savedRole);
+            if (savedRole && ROLES.includes(savedRole as Role)) setSelectedRole(savedRole as Role);
         } catch {
             // ignore
         }
@@ -143,7 +139,7 @@ export default function InviteUsersPage() {
                     }
                 })();
 
-                if (savedRole && isRole(savedRole)) setSelectedRole(savedRole);
+                if (savedRole && ROLES.includes(savedRole as Role)) setSelectedRole(savedRole as Role);
                 else setSelectedRole("VIEWER");
             }
         } catch (e: any) {

@@ -10,19 +10,21 @@ export type RouteKey =
     | "addemaildomain"
     | "addusers"
     | "promoteusers"
-    | "viewbuilds";
+    | "mybuilds"
+    | "viewallbuilds"
 
 export const ROUTE_POLICY: Record<RouteKey, Role[]> = {
     vieweraccess: ["ADMIN", "MANAGER"],
     uploadbuild: ["ADMIN", "DEV"],
-    deletebuild: ["ADMIN"],
+    deletebuild: ["ADMIN","DEV"],
     updateversions: ["ADMIN", "DEV"],
     manageprojects: ["ADMIN", "DEV"],
     manageenvironments: ["ADMIN", "DEV"],
     addemaildomain: ["ADMIN", "MANAGER"],
     addusers: ["ADMIN", "MANAGER"],
     promoteusers: ["ADMIN", "MANAGER"],
-    viewbuilds: ["VIEWER"]
+    mybuilds: ["VIEWER"],
+    viewallbuilds: ["ADMIN", "DEV", "MANAGER"]
 };
 
 export function canAccess(role: Role, allowed: Role[]) {

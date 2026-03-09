@@ -223,7 +223,7 @@ export default function ManageProjectsPage() {
                             <p className="text-sm font-medium">Tips</p>
                             <ul className="mt-1 list-disc pl-5 text-xs text-muted-foreground space-y-1">
                                 <li>Keep slugs stable (changing breaks URLs).</li>
-                                <li>Use envs for QA/Prod, versions for releases.</li>
+                                <li>Use envs for Staging/Prod, versions for releases.</li>
                             </ul>
                         </div>
                     </CardContent>

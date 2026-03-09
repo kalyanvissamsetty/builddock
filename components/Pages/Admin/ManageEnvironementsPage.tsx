@@ -204,7 +204,7 @@ export default function ManageEnvironmentsPage() {
             <div className="mb-4 space-y-2">
                 <h1 className="text-2xl font-semibold">Environments</h1>
                 <p className="text-sm text-muted-foreground">
-                    Environments belong to a project (for example: QA, Staging, Prod).
+                    Environments belong to a project (for example: Staging, Prod).
                 </p>
 
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -235,7 +235,7 @@ export default function ManageEnvironmentsPage() {
                                     <Input
                                         value={name}
                                         onChange={(e) => setName(e.target.value)}
-                                        placeholder="e.g. QA"
+                                        placeholder="e.g. Staging"
                                         disabled={creating || !projectId}
                                     />
                                 </div>
@@ -288,7 +288,7 @@ export default function ManageEnvironmentsPage() {
                             <div className="rounded-md border p-3">
                                 <p className="text-sm font-medium">Tips</p>
                                 <ul className="mt-1 list-disc pl-5 text-xs text-muted-foreground space-y-1">
-                                    <li>Use short names like QA, Staging, Prod.</li>
+                                    <li>Use short names like Staging, Prod.</li>
                                     <li>Slugs should be stable and lowercase.</li>
                                 </ul>
                             </div>

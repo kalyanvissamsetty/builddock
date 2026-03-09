@@ -3,15 +3,13 @@ import type { Role } from "@/types";
 export function defaultRouteForRole(role: Role) {
     switch (role) {
         case "ADMIN":
-            return "/vieweraccess";
+            return "/allbuilds";
         case "MANAGER":
-            return "/vieweraccess"
+            return "/allbuilds"
         case "DEV":
-            return "/uploadbuild";
-        case "QA":
-            return "/updateversions";
+            return "/allbuilds";
         case "VIEWER":
-            return "/viewbuilds";
+            return "/mybuilds";
         default:
             return "/";
     }

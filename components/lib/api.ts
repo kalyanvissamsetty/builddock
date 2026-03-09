@@ -68,3 +68,19 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
+
+export function getApiBase() {
+  let API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+  if (typeof window !== "undefined") {
+    const origin = window.location.origin;
+
+    if (origin.includes("themosaiccompany")) {
+      API_BASE = "https://preview-api.themosaiccompany.com:444";
+    } else if (origin.includes("timsstudio")) {
+      API_BASE = "https://api.timsstudio.tech";
+    }
+  }
+
+  return API_BASE;
+}

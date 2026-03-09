@@ -2,7 +2,7 @@
 
 import { AssignedBuild } from "../../../types";
 import { useEffect, useMemo, useState } from "react";
-import { apiFetch } from "@/components/lib/api";
+import { apiFetch, getApiBase } from "@/components/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -28,21 +28,7 @@ type ExtendedAssignedBuild = AssignedBuild & {
   };
 };
 
-function getApiBase() {
-  let API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-  if (typeof window !== "undefined") {
-    const origin = window.location.origin;
-
-    if (origin.includes("themosaiccompany")) {
-      API_BASE = "https://preview-api.themosaiccompany.com:444";
-    } else if (origin.includes("timsstudio")) {
-      API_BASE = "https://api.timsstudio.tech";
-    }
-  }
-
-  return API_BASE;
-}
 
 function getTimeZoneInfo() {
   try {

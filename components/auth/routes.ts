@@ -10,5 +10,6 @@ export const ROUTES: Record<string, RouteKey> = {
     "/addemaildomain": "addemaildomain",
     "/addusers": "addusers",
     "/promoteusers": "promoteusers",
-    "/viewbuilds": "viewbuilds",
+    "/mybuilds": "mybuilds",
+    "/allbuilds": "viewallbuilds"
 };
