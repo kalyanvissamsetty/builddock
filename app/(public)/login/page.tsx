@@ -36,6 +36,7 @@ function LoginForm() {
         body: JSON.stringify({ email, password }),
       });
       const user = await refreshMe();
+      localStorage.setItem("bd_has_session", "1");
       if (user) router.replace(defaultRouteForRole(user.role));
     } catch (e: any) {
       if (e instanceof ApiError && e.code === "EMAIL_NOT_VERIFIED" && e.redirectTo) {

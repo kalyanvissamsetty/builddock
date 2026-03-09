@@ -6,6 +6,7 @@ import Image from "next/image";
 import logo from "@/public/logos/logo.png";
 import { Me } from "@/types";
 import { useAuth } from "../auth/useAuth";
+import { User } from "lucide-react";
 type Props = {
   me: Me;
 };
@@ -37,29 +38,16 @@ export function Navbar({ me }: Props) {
             />
           </Link>
         </div>
-        {/* <div className="hidden md:flex items-center gap-8 text-md">
-          {visibleItems.map(
-            (item) =>
-              pathname !== item.href && (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  {item.label}
-                </Link>
-              ),
-          )}
-        </div> */}
-        {/* Right */}
-        {!me.id && (
-          <div className="flex items-center gap-3">
-            <Button variant="ghost">Login</Button>
-            <Button>Get Started</Button>
-          </div>
-        )}
+
         {me.id && (
           <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              onClick={() => router.push("/profile")}
+            >
+              <User className="mr-2 h-4 w-4" />
+              View Profile
+            </Button>
             <Button onClick={handleLogout} variant="outline">
               Log Out
             </Button>

@@ -41,7 +41,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   let res = await doFetch();
 
   // If access expired, refresh and retry once
-  if (res.status === 401) {
+  if (res.status === 401 && path !== "/api/auth/refresh" && path !== "/api/auth/logout") {
     const refreshRes = await fetch(`${API_BASE}/api/auth/refresh`, {
       method: "POST",
       credentials: "include",

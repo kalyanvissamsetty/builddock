@@ -1,15 +1,16 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { notFound, usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/useAuth";
 import { LoadingScreen } from "../ui/LoadingScreen";
+import { canAccessPath } from "./access";
 
 export function RouteGuard({ children }: { children: React.ReactNode }) {
     const { me, loading } = useAuth();
     const router = useRouter();
     const redirectedRef = useRef(false);
-
+    const pathname = usePathname();
     useEffect(() => {
         if (loading) return;
         if (redirectedRef.current) return;
@@ -40,5 +41,8 @@ export function RouteGuard({ children }: { children: React.ReactNode }) {
         );
     }
 
-    return <>{children}</>;
+    if (canAccessPath(me.role, pathname)) {
+        return <>{children}</>;
+    }
+    return notFound();
 }

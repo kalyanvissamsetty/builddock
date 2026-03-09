@@ -1,13 +1,12 @@
 "use client";
 
 import {  useState } from "react";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, User } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 
 import logo from "@/public/logos/logo.png";
-import { apiFetch } from "./lib/api";
 import { NAV_ITEMS } from "./navbar/navConfig";
 import { Button } from "./ui/button";
 import { Me } from "@/types";
@@ -30,8 +29,10 @@ export function AppSidebar({ me }: Props) {
 
     async function handleLogout() {
         try {
-            await logout();
+            logout();
+            console.log("Logout successful");
         } finally {
+            console.log("Logout in finally block")
             router.replace("/login");
         }
     }
@@ -140,12 +141,10 @@ export function AppSidebar({ me }: Props) {
 
             {/* Footer */}
             <div className="px-4 py-4 border-t space-y-3">
-                <div className="text-xs text-muted-foreground">
-                    <div className="mt-1 inline-flex rounded-md border px-2 py-0.5 text-[11px]">
-                        {me.role}
-                    </div>
-                </div>
-
+                <Button variant="outline" className="w-full" onClick={() => router.push("/profile")}>
+                    <User className="mr-2 h-4 w-4" />
+                    View Profile
+                </Button>
                 <Button variant="outline" className="w-full" onClick={handleLogout}>
                     Log Out
                 </Button>

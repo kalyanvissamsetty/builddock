@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useEffect, useMemo, useState } from "react";
+import { createContext, useEffect, useMemo, useRef, useState } from "react";
 import { apiFetch } from "@/components/lib/api";
 import type { Me } from "@/types";
 
@@ -18,15 +18,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [me, setMe] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
 
-  async function refreshMe() {
-    try {
-      const user = await apiFetch<Me>("/api/auth/me", { method: "GET" });
-      setMe(user);
-      return user;
-    } catch {
-      setMe(null);
-      return null;
-    }
+  const inFlightRef = useRef<Promise<Me | null> | null>(null);
+
+  async function refreshMe(): Promise<Me | null> {
+    if (inFlightRef.current) return inFlightRef.current;
+
+    inFlightRef.current = (async () => {
+      try {
+        const user = await apiFetch<Me>("/api/auth/me", { method: "GET" });
+        setMe(user);
+        return user;
+      } catch {
+        setMe(null);
+        return null;
+      } finally {
+        inFlightRef.current = null;
+      }
+    })();
+
+    return inFlightRef.current;
   }
 
   async function logout() {
@@ -36,36 +46,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // ignore
     } finally {
       setMe(null);
+      try {
+        localStorage.removeItem("bd_has_session");
+      } catch { }
     }
   }
 
   useEffect(() => {
     let mounted = true;
 
-    async function loadMe() {
+    (async () => {
+      setLoading(true);
+
+      // Only attempt /me if we have a hint (reduces noise on login page)
+      let hasHint = false;
       try {
-        const user = await apiFetch<Me>("/api/auth/me", { method: "GET" });
-        if (mounted) setMe(user);
-      } catch {
-        if (mounted) setMe(null);
-      } finally {
-        if (mounted) setLoading(false);
+        hasHint = localStorage.getItem("bd_has_session") === "1";
+      } catch { }
+
+      if (!hasHint) {
+        if (mounted) {
+          setMe(null);
+          setLoading(false);
+        }
+        return;
       }
-    }
 
-    loadMe();
+      await refreshMe();
+      if (mounted) setLoading(false);
+    })();
 
-    // Refresh when user comes back to tab
+    // Optional: refresh when tab is focused (no loading flip)
     function onFocus() {
       refreshMe().catch(() => { });
     }
-
     window.addEventListener("focus", onFocus);
 
     return () => {
       mounted = false;
       window.removeEventListener("focus", onFocus);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const value = useMemo(
@@ -75,4 +96,3 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
-

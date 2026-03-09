@@ -175,6 +175,7 @@ function VerifyOtpForm() {
 
       setTimeout(async () => {
         const user = await refreshMe();
+        localStorage.setItem("bd_has_session", "1");
         if (user) router.replace(defaultRouteForRole(user.role));
       }, 900);
     } catch (e: any) {

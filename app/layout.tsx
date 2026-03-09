@@ -18,19 +18,13 @@ export default async function RootLayout({
 }) {
 
   return (
-    <AuthProvider>
-
     <html lang="en">
-      <body
-        className={`${avenir.variable} antialiased min-h-screen font-sans`}
-      >
-        <main>
+      <body className={`${avenir.variable} antialiased min-h-screen font-sans`}>
+        <AuthProvider>
           <TooltipProvider>{children}</TooltipProvider>
-        </main>
-
-        <Toaster />
+          <Toaster />
+        </AuthProvider>
       </body>
     </html>
-    </AuthProvider>
   );
 }
