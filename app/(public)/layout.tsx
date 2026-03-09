@@ -9,12 +9,19 @@ import { LoadingScreen } from "@/components/ui/LoadingScreen";
 const PUBLIC_PAGES = ["/login", "/signup", "/verifyotp", "/otplogin", "/logout"];
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
-  const { me, loading } = useAuth();
+  const { me, loading, isLoggingOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
     if (loading) return;
+    if (isLoggingOut) return 
+      <LoadingScreen
+        title="Logging out"
+        description="Please wait..."
+        fullScreen
+      />
+    ;
     if (!me) return;
 
     // Allow /logout even when logged in

@@ -10,6 +10,7 @@ type AuthContextType = {
   setMe: (me: Me | null) => void;
   refreshMe: () => Promise<Me | null>;
   logout: () => Promise<void>;
+  isLoggingOut: boolean;
 };
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -17,6 +18,7 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [me, setMe] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const inFlightRef = useRef<Promise<Me | null> | null>(null);
 
@@ -40,6 +42,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function logout() {
+    setIsLoggingOut(true);
+
     try {
       await apiFetch("/api/auth/logout", { method: "POST" });
     } catch {
@@ -48,7 +52,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setMe(null);
       try {
         localStorage.removeItem("bd_has_session");
-      } catch { }
+      } catch { } finally {
+        setIsLoggingOut(false);
+      }
     }
   }
 
@@ -90,8 +96,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ me, loading, setMe, refreshMe, logout }),
-    [me, loading],
+    () => ({ me, loading, setMe, refreshMe, logout,isLoggingOut }),
+    [me, loading, isLoggingOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
