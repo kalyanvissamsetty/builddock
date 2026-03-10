@@ -15,14 +15,12 @@ import { PublicUrlField } from "../PublicUrlField";
 type Props = {
   isOpenSuccessDialog: boolean;
   setSuccessDialog: React.Dispatch<React.SetStateAction<boolean>>;
-  successUrl: string;
   showActivateButton: boolean;
   activateVersion: () => Promise<boolean>;
 };
 export function UploadSuccess({
   isOpenSuccessDialog,
   setSuccessDialog,
-  successUrl,
   showActivateButton,
   activateVersion,
 }: Props) {
@@ -42,28 +40,15 @@ export function UploadSuccess({
       {/* <DialogTrigger asChild>
         <Button variant="outline">Share</Button>
       </DialogTrigger> */}
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-120">
         <DialogHeader>
-          <DialogTitle>Share link</DialogTitle>
+          <DialogTitle>Build Uploaded</DialogTitle>
+          {showActivateButton && (
           <DialogDescription>
-            Anyone who has this link will be able to view this Unity Build.
-          </DialogDescription>
+            Click <b>Activate</b> to set this version as default for this Environment
+          </DialogDescription>)}
         </DialogHeader>
-        <div className="flex items-center gap-2">
-          <div className="grid flex-1 gap-2">
-            <Label htmlFor="link" className="sr-only">
-              Link
-            </Label>
-
-            <PublicUrlField url={successUrl} />
-          </div>
-        </div>
-        {showActivateButton && (
-          <h3 className="text-xs italic text-gray-500">
-            Click <b>Activate</b> to set this version as default for this
-            Environment
-          </h3>
-        )}
+        
         <DialogFooter className="sm:justify-start">
           {showActivateButton && (
             <Button

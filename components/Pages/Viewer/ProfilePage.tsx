@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -10,7 +11,6 @@ import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { defaultRouteForRole } from "@/components/auth/defaultRoute";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
-
 type ProfileResponse = {
     id: number;
     name: string;
@@ -145,20 +145,19 @@ export function ProfilePage() {
             toast.error("Name must be between 2 and 50 characters");
             return;
         }
-
         try {
             setSavingProfile(true);
 
-            await apiFetch("/api/profile", {
+            const data = await apiFetch("/api/profile", {
                 method: "PATCH",
                 body: JSON.stringify({ name: trimmedName }),
             });
 
             await refreshMe();
             toast.success("Profile updated successfully");
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            toast.error("Failed to update profile");
+            toast.error(error?.message || "Failed to update profile");
         } finally {
             setSavingProfile(false);
         }
@@ -204,9 +203,8 @@ export function ProfilePage() {
             toast.success(
                 hasPassword ? "Password updated successfully" : "Password set successfully"
             );
-        } catch (error) {
-            console.error(error);
-            toast.error("Failed to save password");
+        } catch (error: any) {
+            toast.error(error?.message || "Failed to save password");
         } finally {
             setSavingPassword(false);
         }

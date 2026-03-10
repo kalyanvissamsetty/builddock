@@ -126,7 +126,7 @@ export default function AllBuilds() {
     const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
     const [assigning, setAssigning] = useState(false);
 
-    const {me}= useAuth()
+    const { me } = useAuth()
     useEffect(() => {
         loadAll();
     }, []);
@@ -226,6 +226,7 @@ export default function AllBuilds() {
         setAssignVersion(version);
         setSelectedUserIds([]);
         setAssignOpen(true);
+        resetAssignForm(true);
         void loadUsersOnce();
     }
 
@@ -255,9 +256,9 @@ export default function AllBuilds() {
             });
 
             setBulkResult(res);
-
+            resetAssignForm(true); 
             //setAssignOpen(false);
-            setAssignVersion(null);
+            //setAssignVersion(null);
             setSelectedUserIds([]);
         } catch (e: any) {
             toast.error(e?.message ?? "Failed to assign access");
@@ -265,7 +266,12 @@ export default function AllBuilds() {
             setAssigning(false);
         }
     }
-
+    function resetAssignForm(keepResult = false) {
+        setUserPickerOpen(false);
+        setSelectedUserIds([]);
+        setAssigning(false);
+        if (!keepResult) setBulkResult(null);
+    }
     const selectedUsersPreview = useMemo(() => {
         const map = new Map<number, UserRow>();
         users.forEach((u) => map.set(u.id, u));
@@ -377,16 +383,16 @@ export default function AllBuilds() {
                                 <CardHeader className="space-y-2">
                                     <div className="flex items-start justify-between gap-2">
                                         <CardTitle className="text-base font-sans font-normal">{project}</CardTitle>
-                                {(me?.role === "ADMIN" || me?.role === "MANAGER") && (
-                                        <Button
-                                            variant="outline"
-                                            size="icon"
-                                            onClick={() => openAssignDialog(r)}
-                                            title="Assign this build to users"
-                                        >
-                                            <Users className="h-4 w-4" />
-                                        </Button>
-                                )}
+                                        {(me?.role === "ADMIN" || me?.role === "MANAGER") && (
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                onClick={() => openAssignDialog(r)}
+                                                title="Assign this build to users"
+                                            >
+                                                <Users className="h-4 w-4" />
+                                            </Button>
+                                        )}
                                     </div>
 
                                     <div className="flex flex-wrap gap-2 text-xs">
@@ -394,7 +400,7 @@ export default function AllBuilds() {
                                         <Badge variant="outline" className="font-sans font-normal">{version}</Badge>
                                     </div>
 
-                                    
+
                                 </CardHeader>
 
                                 <CardContent className="space-y-3">
@@ -443,7 +449,7 @@ export default function AllBuilds() {
             )}
 
             {/* Assign dialog */}
-            <Dialog open={assignOpen} onOpenChange={(v) => { setAssignOpen(v); if (!v) setUserPickerOpen(false); }}>
+            <Dialog open={assignOpen} onOpenChange={(v) => { resetAssignForm(false); setAssignOpen(v); if (!v) setUserPickerOpen(false); }}>
                 <DialogContent className="max-w-lg">
                     <DialogHeader>
                         <DialogTitle>Assign Build Access</DialogTitle>
@@ -568,7 +574,8 @@ export default function AllBuilds() {
                                 onClick={() => {
                                     setBulkResult(null);
                                     setSelectedUserIds([]);
-                                setAssignOpen(false)}}
+                                    setAssignOpen(false)
+                                }}
                                 disabled={assigning}
                             >
                                 Cancel
@@ -581,7 +588,7 @@ export default function AllBuilds() {
                             </Button>
                         </div>
 
-                        
+
                     </div>
                 </DialogContent>
             </Dialog>

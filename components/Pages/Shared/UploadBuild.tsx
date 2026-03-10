@@ -27,7 +27,6 @@ export function UploadBuild() {
 
   const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [successUrl, setSuccessUrl] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [isOpenSuccessDialog, setSuccessDialog] = useState<boolean>(false);
   const [isBuildActivated, setBuildActivated] = useState<boolean>(false);
@@ -101,7 +100,6 @@ export function UploadBuild() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setSuccessUrl(null);
 
     if (!selectedEnvId || !selectedProjectId || !selectedVersionId || !file || !releaseNotes) {
       setError("All fields are required");
@@ -122,7 +120,6 @@ export function UploadBuild() {
         body: formData,
       });
 
-      setSuccessUrl(data.publicUrl);
       setReleaseNotes("");
       setSuccessDialog(true);
       setBuildActivated(data.isThisVersionDefault);
@@ -136,7 +133,6 @@ export function UploadBuild() {
   }
   useEffect(() => {
     if (!isOpenSuccessDialog) {
-      setSuccessUrl(null);
       resetForm();
     }
   }, [isOpenSuccessDialog]);
@@ -146,7 +142,6 @@ export function UploadBuild() {
       <UploadSuccess
         isOpenSuccessDialog={isOpenSuccessDialog}
         setSuccessDialog={setSuccessDialog}
-        successUrl={successUrl ? successUrl : ""}
         showActivateButton={!isBuildActivated}
         activateVersion={activateVersion}
       />
@@ -186,14 +181,7 @@ export function UploadBuild() {
         />
         {error && <p className="text-sm text-destructive">{error}</p>}
 
-        {successUrl && (
-          <p className="text-sm text-green-600">
-            Upload successful:{" "}
-            <a href={successUrl} target="_blank" className="underline">
-              {successUrl}
-            </a>
-          </p>
-        )}
+        
         <Textarea
           value={releaseNotes}
           onChange={(e) => setReleaseNotes(e.target.value)}

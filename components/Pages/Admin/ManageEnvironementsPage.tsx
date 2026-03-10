@@ -187,7 +187,7 @@ export default function ManageEnvironmentsPage() {
     async function deleteEnvironment(envId: number) {
         setDeleting(true);
         try {
-            await apiFetch(`/environments/${envId}`, { method: "DELETE" });
+            await apiFetch(`/projects/${projectId}/environments/${envId}`, { method: "DELETE" });
             toast.success("Environment deleted");
             setDeleteEnvId(null);
             setDeleteSummary(null);
