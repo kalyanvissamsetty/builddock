@@ -29,7 +29,7 @@ export function AppSidebar({ me }: Props) {
 
     async function handleLogout() {
         try {
-            logout();
+            await logout();
             console.log("Logout successful");
         } finally {
             console.log("Logout in finally block")

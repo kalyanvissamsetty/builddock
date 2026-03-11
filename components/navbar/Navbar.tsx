@@ -16,7 +16,7 @@ export function Navbar({ me }: Props) {
 
   async function handleLogout() {
     try {
-      logout()
+      await logout()
     } finally {
       router.replace("/login");
     }
