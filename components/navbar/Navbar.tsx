@@ -3,10 +3,10 @@ import Link from "next/link";
 import { Button } from "../ui/button";
 import {  useRouter } from "next/navigation";
 import Image from "next/image";
-import logo from "@/public/logos/logo.png";
 import { Me } from "@/types";
 import { useAuth } from "../auth/useAuth";
 import { User } from "lucide-react";
+import { getLogoFromWindowOrigin } from "../Helpers/getLogoFromWindowOrigin";
 type Props = {
   me: Me;
 };
@@ -29,7 +29,7 @@ export function Navbar({ me }: Props) {
         <div className="flex items-center gap-10">
           <Link href="/" className="text-lg font-semibold">
             <Image
-              src={logo}
+              src={getLogoFromWindowOrigin()}
               alt="Logo"
               width={120}
               height={10}

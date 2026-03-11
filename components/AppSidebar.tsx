@@ -6,12 +6,12 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 
-import logo from "@/public/logos/logo.png";
 import { NAV_ITEMS } from "./navbar/navConfig";
 import { Button } from "./ui/button";
 import { Me } from "@/types";
 import { canAccessPath } from "./auth/access";
 import { useAuth } from "./auth/useAuth";
+import { getLogoFromWindowOrigin } from "./Helpers/getLogoFromWindowOrigin";
 type Props = {
     me: Me;
 };
@@ -43,7 +43,7 @@ export function AppSidebar({ me }: Props) {
             <div className="px-4 py-2 border-b">
                 <Link href="/" className="inline-flex items-center">
                     <Image
-                        src={logo}
+                        src={getLogoFromWindowOrigin()}
                         alt="Logo"
                         width={120}
                         height={32}

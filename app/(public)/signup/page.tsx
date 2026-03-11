@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiFetch } from "../../../components/lib/api";
 import Image from "next/image";
-import logo from "@/public/logos/logo.png";
 import PasswordRules from "@/components/Helpers/PasswordRules";
 import { Eye, EyeOff } from "lucide-react";
+import { getLogoFromWindowOrigin } from "@/components/Helpers/getLogoFromWindowOrigin";
 export default function SignupPage() {
   const router = useRouter();
 
@@ -63,7 +63,7 @@ export default function SignupPage() {
   return (
     <div className="flex flex-col gap-4 min-h-screen items-center justify-center px-4">
       <Image
-        src={logo}
+        src={getLogoFromWindowOrigin()}
         alt="Logo"
         width={150}
         height={10}

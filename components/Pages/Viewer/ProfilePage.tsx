@@ -96,7 +96,7 @@ export function ProfilePage() {
     const [oldPassword, setOldPassword] = useState("");
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
-
+    const [passwordResetKey, setPasswordResetKey] = useState(0);
     useEffect(() => {
         let mounted = true;
 
@@ -111,6 +111,7 @@ export function ProfilePage() {
                 setName(data.name ?? "");
                 setEmail(data.email ?? "");
                 setHasPassword(data.hasPassword);
+                
             } catch (error) {
                 console.error(error);
                 toast.error("Failed to load profile");
@@ -148,13 +149,13 @@ export function ProfilePage() {
         try {
             setSavingProfile(true);
 
-            const data = await apiFetch("/api/profile", {
+            const data: any = await apiFetch("/api/profile", {
                 method: "PATCH",
                 body: JSON.stringify({ name: trimmedName }),
             });
 
             await refreshMe();
-            toast.success("Profile updated successfully");
+            toast.success(data?.message);
         } catch (error: any) {
             console.error(error);
             toast.error(error?.message || "Failed to update profile");
@@ -194,12 +195,11 @@ export function ProfilePage() {
                     newPassword,
                 }),
             });
-
             setOldPassword("");
             setNewPassword("");
             setConfirmPassword("");
             setHasPassword(true);
-
+            setPasswordResetKey((prev) => prev + 1);
             toast.success(
                 hasPassword ? "Password updated successfully" : "Password set successfully"
             );
@@ -291,6 +291,7 @@ export function ProfilePage() {
 
                     {hasPassword && (
                         <PasswordInput
+                            key={`current-${passwordResetKey}`}
                             label="Current Password"
                             value={oldPassword}
                             onChange={setOldPassword}
@@ -299,6 +300,7 @@ export function ProfilePage() {
                     )}
 
                     <PasswordInput
+                        key={`new-${passwordResetKey}`}
                         label={hasPassword ? "New Password" : "Password"}
                         value={newPassword}
                         onChange={setNewPassword}
@@ -306,6 +308,7 @@ export function ProfilePage() {
                     />
 
                     <PasswordInput
+                        key={`confirm-${passwordResetKey}`}
                         label={hasPassword ? "Confirm New Password" : "Confirm Password"}
                         value={confirmPassword}
                         onChange={setConfirmPassword}

@@ -9,12 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Clipboard } from "lucide-react";
 import Image from "next/image";
-import logo from "@/public/logos/logo.png";
 import Link from "next/link";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { defaultRouteForRole } from "@/components/auth/defaultRoute";
 import { Me } from "@/types";
 import { useAuth } from "@/components/auth/useAuth";
+import { getLogoFromWindowOrigin } from "@/components/Helpers/getLogoFromWindowOrigin";
 
 
 function VerifyOtpForm() {
@@ -187,7 +187,7 @@ function VerifyOtpForm() {
   const LoadingUI = (
     <div className="flex flex-col gap-4 min-h-screen items-center justify-center px-4">
       <Image
-        src={logo}
+        src={getLogoFromWindowOrigin()}
         alt="Logo"
         width={150}
         height={10}
@@ -209,7 +209,7 @@ function VerifyOtpForm() {
   const SwitchUI = (
     <div className="flex flex-col gap-4 min-h-screen items-center justify-center px-4">
       <Image
-        src={logo}
+        src={getLogoFromWindowOrigin()}
         alt="Logo"
         width={150}
         height={10}
@@ -249,7 +249,7 @@ function VerifyOtpForm() {
   const OtpUI = (
     <div className="flex flex-col gap-4 min-h-screen items-center justify-center px-4">
       <Image
-        src={logo}
+        src={getLogoFromWindowOrigin()}
         alt="Logo"
         width={150}
         height={10}

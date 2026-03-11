@@ -134,7 +134,7 @@ export default function ManageEmailDomainsPage() {
             await apiFetch(`/api/admin/allowed-domains/${domainId}${qs}`, {
                 method: "DELETE",
             });
-            toast.success(withUsers ? "Domain and users deleted" : "Domain deleted");
+            toast.success(withUsers ? "Domain and VIEWERS deleted" : "Domain deleted, no VIEWERS got deleted");
             await loadDomains();
         } catch (err: any) {
             toast.error(err?.message ?? "Failed to delete domain");
@@ -285,8 +285,10 @@ export default function ManageEmailDomainsPage() {
                                                                         <span className="mt-3 block rounded-md border p-3">
                                                                             <span className="block text-sm font-medium">Impact</span>
                                                                             <span className="mt-2 flex flex-wrap gap-2">
-                                                                                <Badge variant="outline">{summary.userCount} users</Badge>
-                                                                                <Badge variant="outline">{summary.inviteCount} invites</Badge>
+                                                                                <Badge variant="outline">{summary.userCount}
+                                                                                    {summary.userCount === 1 ? "VIEWER" : " VIEWERS"}</Badge>
+                                                                                <Badge variant="outline">{summary.inviteCount}
+                                                                                    {summary.inviteCount === 1 ? " INVITE" : " INVITES"}</Badge>
                                                                             </span>
                                                                         </span>
                                                                     )}

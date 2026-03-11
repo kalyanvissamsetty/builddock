@@ -24,8 +24,7 @@ import {
 } from "@/components/ui/select";
 
 import { toast } from "sonner";
-import { Users, Check, ChevronsUpDown, X } from "lucide-react";
-
+import { Users, Check, ChevronsUpDown, X, RefreshCw } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
     Command,
@@ -290,12 +289,24 @@ export default function AllBuilds() {
             <Card>
                 <CardContent className="pt-6 space-y-4">
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-                        <div className="md:col-span-2">
+                        <div className="md:col-span-2 flex gap-2">
                             <Input
                                 placeholder="Search project, env, version..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                             />
+
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                onClick={loadAll}
+                                disabled={loading}
+                                title="Refresh builds"
+                                aria-label="Refresh builds"
+                            >
+                                <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                            </Button>
                         </div>
 
                         <Select

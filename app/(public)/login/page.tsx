@@ -9,10 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiFetch, ApiError } from "../../../components/lib/api";
 import Image from "next/image";
-import logo from "@/public/logos/logo.png";
 import { Eye, EyeOff } from "lucide-react";
 import { defaultRouteForRole } from "@/components/auth/defaultRoute";
 import { useAuth } from "@/components/auth/useAuth";
+import { getLogoFromWindowOrigin } from "@/components/Helpers/getLogoFromWindowOrigin";
 
 function LoginForm() {
   const router = useRouter();
@@ -52,7 +52,7 @@ function LoginForm() {
   return (
     <div className="flex gap-4 flex-col min-h-screen items-center justify-center px-4">
       <Image
-        src={logo}
+        src={getLogoFromWindowOrigin()}
         alt="Logo"
         width={150}
         height={10}
