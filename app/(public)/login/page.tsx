@@ -115,7 +115,7 @@ function LoginForm() {
             <p className="mt-2 text-center text-sm text-muted-foreground">
               Or{" "}
               <a href="/otplogin" className="underline">
-                sign in with OTP
+                Sign in with OTP
               </a>
             </p>
             {error && <p className="text-sm text-destructive">{error}</p>}
