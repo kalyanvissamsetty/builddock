@@ -20,7 +20,7 @@ import { useAuth } from "@/components/auth/useAuth";
 function VerifyOtpForm() {
   const params = useSearchParams();
   const router = useRouter();
-  const { refreshMe } = useAuth();
+  const { refreshMe,logout } = useAuth();
 
   const email = (params.get("email") || "").trim().toLowerCase();
   const reason = params.get("reason") || "";
@@ -123,11 +123,9 @@ function VerifyOtpForm() {
     setError(null);
 
     try {
-      await apiFetch("/api/auth/logout", { method: "POST" });
-
+      await logout()
       // Clear local session immediately
       setMe(null);
-
       // Hard refresh so cookies + middleware state re-evaluates
       window.location.href = `/verifyotp?email=${encodeURIComponent(email)}&reason=${encodeURIComponent(
         reason,
