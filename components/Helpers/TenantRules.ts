@@ -18,3 +18,19 @@ export function getLogoFromWindowOrigin(): StaticImageData {
 
     return mosaicLogo;
 }
+
+export function getAppName(): string {
+    if (typeof window === "undefined") {
+        return "Mosaic WebGL Viewer";
+    }
+
+    if (window.origin.includes("themosaiccompany")) {
+        return "Mosaic WebGL Viewer";
+    }
+
+    if (window.origin.includes("timsstudio")) {
+        return "TIMS Studio";
+    }
+
+    return "Mosaic WebGL Viewer";
+}

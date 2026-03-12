@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiFetch } from "@/components/lib/api";
 import Image from "next/image";
-import { getLogoFromWindowOrigin } from "@/components/Helpers/getLogoFromWindowOrigin";
+import { getLogoFromWindowOrigin } from "@/components/Helpers/TenantRules";
 
 function LoginOtpForm() {
     const router = useRouter();
@@ -51,7 +51,7 @@ function LoginOtpForm() {
             router.replace(
                 `/verifyotp?email=${encodeURIComponent(targetEmail)}&reason=otp-login`,
             );
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (e: any) {
             setError(e.message || "Failed to send OTP");
         } finally {

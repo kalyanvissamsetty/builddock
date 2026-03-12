@@ -12,8 +12,8 @@ import Image from "next/image";
 import { Eye, EyeOff } from "lucide-react";
 import { defaultRouteForRole } from "@/components/auth/defaultRoute";
 import { useAuth } from "@/components/auth/useAuth";
-import { getLogoFromWindowOrigin } from "@/components/Helpers/getLogoFromWindowOrigin";
-
+import { getLogoFromWindowOrigin } from "@/components/Helpers/TenantRules";
+import { sanitizePasswordInput } from "@/components/Helpers/PasswordRules";
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
@@ -39,10 +39,11 @@ function LoginForm() {
       localStorage.setItem("bd_has_session", "1");
       if (user) router.replace(defaultRouteForRole(user.role));
     } catch (e: any) {
-      if (e instanceof ApiError && e.code === "EMAIL_NOT_VERIFIED" && e.redirectTo) {
+      if (e instanceof ApiError && (e.code === "EMAIL_NOT_VERIFIED" || e.code === "INVITED_NO_PASSWORD") && e.redirectTo) {
         router.replace(e.redirectTo);
         return;
       }
+
       setError(e.message);
     } finally {
       setLoading(false);
@@ -90,7 +91,7 @@ function LoginForm() {
                 <Input
                   type={showPassword ? "text" : "password"}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => setPassword(sanitizePasswordInput(e.target.value))}
                   required
                   data-ms-editor="false"
                   className="pr-10"

@@ -128,6 +128,7 @@ export default function ManageEmailDomainsPage() {
     }
 
     async function deleteDomain(domainId: number, withUsers: boolean) {
+        console.log(withUsers," withusers")
         setDeleting(true);
         try {
             const qs = withUsers ? "?deleteUsers=true" : "";
@@ -286,7 +287,7 @@ export default function ManageEmailDomainsPage() {
                                                                             <span className="block text-sm font-medium">Impact</span>
                                                                             <span className="mt-2 flex flex-wrap gap-2">
                                                                                 <Badge variant="outline">{summary.userCount}
-                                                                                    {summary.userCount === 1 ? "VIEWER" : " VIEWERS"}</Badge>
+                                                                                    {summary.userCount === 1 ? " VIEWER" : " VIEWERS"}</Badge>
                                                                                 <Badge variant="outline">{summary.inviteCount}
                                                                                     {summary.inviteCount === 1 ? " INVITE" : " INVITES"}</Badge>
                                                                             </span>
@@ -304,6 +305,7 @@ export default function ManageEmailDomainsPage() {
                                                         disabled={deleting || summaryLoading}
                                                         onClick={(e) => {
                                                             e.preventDefault();
+                                                            console.log("delete domain", deleteUsers)
                                                             void deleteDomain(d.id, deleteUsers);
                                                         }}
                                                     >

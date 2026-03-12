@@ -14,13 +14,13 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { defaultRouteForRole } from "@/components/auth/defaultRoute";
 import { Me } from "@/types";
 import { useAuth } from "@/components/auth/useAuth";
-import { getLogoFromWindowOrigin } from "@/components/Helpers/getLogoFromWindowOrigin";
+import { getAppName, getLogoFromWindowOrigin } from "@/components/Helpers/TenantRules";
 
 
 function VerifyOtpForm() {
   const params = useSearchParams();
   const router = useRouter();
-  const { refreshMe,logout } = useAuth();
+  const { refreshMe, logout } = useAuth();
 
   const email = (params.get("email") || "").trim().toLowerCase();
   const reason = params.get("reason") || "";
@@ -264,7 +264,7 @@ function VerifyOtpForm() {
         <CardContent className="space-y-4">
           {reason === "invite" && (
             <div className="rounded-md bg-blue-50 p-3 text-sm text-blue-700 border border-blue-200">
-              You were invited to access BuildDock. Use the OTP from the email to sign in.
+              You were invited to access {getAppName()}. Use the OTP from the email to sign in.
               If it expired, you can resend a new OTP below.
             </div>
           )}
@@ -278,6 +278,11 @@ function VerifyOtpForm() {
           {reason === "not-verified" && (
             <div className="rounded-md bg-yellow-50 p-3 text-sm text-yellow-700 border border-yellow-200">
               Your account is not verified. Please complete verification to continue.
+            </div>
+          )}
+          {reason === "invited-no-password" && (
+            <div className="rounded-md bg-yellow-50 p-3 text-sm text-yellow-700 border border-yellow-200">
+              You are an invited user to {getAppName()}. But you haven&apos;t set your password yet. Please enter the OTP sent to your mail to login. <br /><br/><b>Please create your password in the Profile section after login.</b>
             </div>
           )}
 

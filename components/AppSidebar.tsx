@@ -1,6 +1,6 @@
 "use client";
 
-import {  useState } from "react";
+import { useState } from "react";
 import { ChevronRight, User } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -11,7 +11,7 @@ import { Button } from "./ui/button";
 import { Me } from "@/types";
 import { canAccessPath } from "./auth/access";
 import { useAuth } from "./auth/useAuth";
-import { getLogoFromWindowOrigin } from "./Helpers/getLogoFromWindowOrigin";
+import { getLogoFromWindowOrigin } from "./Helpers/TenantRules";
 type Props = {
     me: Me;
 };
@@ -19,7 +19,7 @@ type Props = {
 export function AppSidebar({ me }: Props) {
     const pathname = usePathname();
     const router = useRouter();
-    const {logout} = useAuth()
+    const { logout } = useAuth()
     const [openMenu, setOpenMenu] = useState<string | null>(null);
 
     const visibleItems = NAV_ITEMS.filter((item) => {
@@ -36,7 +36,7 @@ export function AppSidebar({ me }: Props) {
             router.replace("/login");
         }
     }
-    
+
     return (
         <aside className="h-full bg-background flex flex-col border-r">
             {/* Logo */}

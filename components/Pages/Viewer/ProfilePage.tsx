@@ -2,6 +2,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import PasswordRules, { getPasswordRules, sanitizePasswordInput } from "@/components/Helpers/PasswordRules";
+
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiFetch } from "@/components/lib/api";
@@ -64,7 +67,7 @@ function PasswordInput({
                 <Input
                     type={show ? "text" : "password"}
                     value={value}
-                    onChange={(e) => onChange(e.target.value)}
+                    onChange={(e) => onChange(sanitizePasswordInput(e.target.value))}
                     placeholder={placeholder}
                     className="pr-10"
                 />
@@ -315,7 +318,7 @@ export function ProfilePage() {
                         placeholder="Confirm password"
                     />
 
-                    {newPassword && passwordErrors.length > 0 && (
+                    {/* {newPassword && passwordErrors.length > 0 && (
                         <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
                             <p className="mb-2 text-sm font-medium text-destructive">
                                 Password must satisfy:
@@ -326,8 +329,10 @@ export function ProfilePage() {
                                 ))}
                             </ul>
                         </div>
+                    )} */}
+                    {newPassword && newPassword.length > 0 && (
+                        <PasswordRules rules={getPasswordRules(newPassword)} />
                     )}
-
                     {passwordsMatch && passwordErrors.length === 0 && (
                         <div className="rounded-md border border-green-500/30 bg-green-500/5 p-3">
                             <p className="text-sm font-medium text-green-700">

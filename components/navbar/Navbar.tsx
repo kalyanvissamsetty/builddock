@@ -1,12 +1,12 @@
 "use client";
 import Link from "next/link";
 import { Button } from "../ui/button";
-import {  useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Me } from "@/types";
 import { useAuth } from "../auth/useAuth";
 import { User } from "lucide-react";
-import { getLogoFromWindowOrigin } from "../Helpers/getLogoFromWindowOrigin";
+import { getLogoFromWindowOrigin } from "../Helpers/TenantRules";
 type Props = {
   me: Me;
 };

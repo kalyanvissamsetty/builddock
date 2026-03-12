@@ -6,11 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { apiFetch } from "../../../components/lib/api";
+import { ApiError, apiFetch } from "../../../components/lib/api";
 import Image from "next/image";
 import PasswordRules from "@/components/Helpers/PasswordRules";
 import { Eye, EyeOff } from "lucide-react";
-import { getLogoFromWindowOrigin } from "@/components/Helpers/getLogoFromWindowOrigin";
+import { getLogoFromWindowOrigin } from "@/components/Helpers/TenantRules";
+import { sanitizePasswordInput, getPasswordRules } from "@/components/Helpers/PasswordRules";
 export default function SignupPage() {
   const router = useRouter();
 
@@ -21,13 +22,7 @@ export default function SignupPage() {
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const passwordRules = {
-    minLength: password.length >= 8,
-    upper: /[A-Z]/.test(password),
-    lower: /[a-z]/.test(password),
-    number: /[0-9]/.test(password),
-    special: /[^A-Za-z0-9]/.test(password),
-  };
+  const passwordRules = getPasswordRules(password);
   const isNameValid = name.trim().length > 0;
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const isPasswordValid = Object.values(passwordRules).every(Boolean);
@@ -55,6 +50,10 @@ export default function SignupPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err.message);
+      if (err instanceof ApiError && (err.code === "EMAIL_NOT_VERIFIED" || err.code === "INVITED_NO_PASSWORD") && err.redirectTo) {
+        router.replace(err.redirectTo);
+        return;
+      }
     } finally {
       setLoading(false);
     }
@@ -102,7 +101,7 @@ export default function SignupPage() {
                 <Label>Email</Label>
                 <Input
                   type="email"
-                    placeholder="you@company.com"
+                  placeholder="you@company.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -114,39 +113,39 @@ export default function SignupPage() {
                 )}
               </div>
 
-                <div className="space-y-2">
-                  <Label>Password</Label>
+              <div className="space-y-2">
+                <Label>Password</Label>
 
-                  <div className="relative">
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      className="pr-10"
-                      data-ms-editor="false"
-                      placeholder="Enter your password"
-                    />
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(sanitizePasswordInput(e.target.value))}
+                    required
+                    className="pr-10"
+                    data-ms-editor="false"
+                    placeholder="Enter your password"
+                  />
 
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((v) => !v)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      aria-label={showPassword ? "Hide password" : "Show password"}
-                      disabled={!password}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </button>
-                  </div>
-
-                  {password.length > 0 && (
-                    <PasswordRules rules={passwordRules} />
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    disabled={!password}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
                 </div>
+
+                {password.length > 0 && (
+                  <PasswordRules rules={passwordRules} />
+                )}
+              </div>
 
               {error && <p className="text-sm text-destructive">{error}</p>}
 

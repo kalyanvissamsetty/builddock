@@ -234,7 +234,7 @@ export default function InviteUsersPage() {
             <div className="mb-4">
                 <h1 className="text-2xl font-semibold">Invite Users (OTP)</h1>
                 <p className="text-sm text-muted-foreground">
-                    Invite users from allowed domains. Admin selects role. Users can sign in with OTP.
+                    You can Invite users from allowed domains. Users can sign in with OTP.
                 </p>
             </div>
 
