@@ -420,11 +420,11 @@ export default function AllBuilds() {
                                             Open Build
                                         </Button>
 
-                                        <Button variant="outline" className="w-full" onClick={() => copy(backendUrl, r.id)}>
+                                        {/* <Button variant="outline" className="w-full" onClick={() => copy(backendUrl, r.id)}>
                                             {copiedId === r.id ? "Copied!" : "Copy URL"}
-                                        </Button>
+                                        </Button> */}
 
-                                        <Dialog>
+                                        {/* <Dialog>
                                             <DialogTrigger asChild>
                                                 <Button variant="secondary" className="w-full">
                                                     Release Notes
@@ -450,7 +450,7 @@ export default function AllBuilds() {
                                                     </div>
                                                 </ScrollArea>
                                             </DialogContent>
-                                        </Dialog>
+                                        </Dialog> */}
                                     </div>
                                 </CardContent>
                             </Card>

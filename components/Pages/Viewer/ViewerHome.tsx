@@ -187,15 +187,15 @@ export default function ViewerHome() {
                     Open Build
                   </Button>
 
-                  <Button
+                  {/* <Button
                     variant="outline"
                     className="w-full"
                     onClick={() => copyToClipboard(backendUrl, b.id)}
                   >
                     {copiedId === b.id ? "Copied!" : "Copy URL"}
-                  </Button>
+                  </Button> */}
 
-                  <Dialog>
+                  {/* <Dialog>
                     <DialogTrigger asChild>
                       <Button variant="secondary" className="w-full">
                         Release Notes
@@ -224,7 +224,7 @@ export default function ViewerHome() {
                         </div>
                       </ScrollArea>
                     </DialogContent>
-                  </Dialog>
+                  </Dialog> */}
                 </div>
               </CardContent>
             </Card>
