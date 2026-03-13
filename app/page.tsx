@@ -13,7 +13,7 @@ export default function Page() {
     if (loading) return;
 
     if (!me) {
-      router.replace("/login");
+      router.replace("/otplogin");
       return;
     }
 

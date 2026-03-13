@@ -18,7 +18,7 @@ export function Navbar({ me }: Props) {
     try {
       await logout()
     } finally {
-      router.replace("/login");
+      router.replace("/otplogin");
     }
   }
   const router = useRouter();
@@ -41,13 +41,13 @@ export function Navbar({ me }: Props) {
 
         {me.id && (
           <div className="flex items-center gap-3">
-            <Button
+            {/* <Button
               variant="outline"
               onClick={() => router.push("/profile")}
             >
               <User className="mr-2 h-4 w-4" />
               View Profile
-            </Button>
+            </Button> */}
             <Button onClick={handleLogout} variant="outline">
               Log Out
             </Button>

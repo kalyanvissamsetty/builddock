@@ -6,7 +6,7 @@ import { apiFetch } from "@/components/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea"; 
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
@@ -18,6 +18,8 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Role } from "@/types";
+import { Label } from "@/components/ui/label";
+import BuildSelect, { BuildSelectValue } from "../BuildSelect";
 
 type AllowedDomain = {
     id: number;
@@ -38,28 +40,36 @@ type Invite = {
 
 const ROLES: Role[] = ["VIEWER", "MANAGER","DEV"];
 
-const LS_DOMAIN_KEY = "invite_selected_domain";
 const LS_ROLE_KEY = "invite_selected_role";
 
-function isValidLocalPart(input: string) {
-    const v = input.trim();
-    if (!v) return false;
-    if (v.includes(" ")) return false;
-    if (v.includes("@")) return false;
-    return /^[a-zA-Z0-9._+-]+$/.test(v);
+
+function parseEmails(text: string) {
+    return text
+        .split(/\r?\n/g)
+        .map((s) => s.trim())
+        .filter(Boolean);
 }
 
+function countLines(text: string) {
+    if (!text) return 1;
+    return text.split(/\r?\n/g).length;
+}
+
+function autoRows(text: string) {
+    return Math.min(30, Math.max(4, countLines(text)));
+}
+
+function isValidEmail(email: string) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
 export default function InviteUsersPage() {
     const [domains, setDomains] = React.useState<AllowedDomain[]>([]);
     const [loadingDomains, setLoadingDomains] = React.useState(true);
 
-    const [localPart, setLocalPart] = React.useState("");
-    const [selectedDomain, setSelectedDomain] = React.useState<string | null>(null);
-
     const [selectedRole, setSelectedRole] = React.useState<Role | null>(null);
-
-    const [name, setName] = React.useState("");
     const [sending, setSending] = React.useState(false);
+
+    const [emailsText, setEmailsText] = React.useState("");
 
     const [invites, setInvites] = React.useState<Invite[]>([]);
     const [loadingInvites, setLoadingInvites] = React.useState(false);
@@ -67,28 +77,34 @@ export default function InviteUsersPage() {
     const [search, setSearch] = React.useState("");
     const [statusFilter, setStatusFilter] = React.useState<"ALL" | InviteStatus>("ALL");
 
+    const [bulkReport, setBulkReport] = React.useState<null | {
+        requested: number;
+        sent: number;
+        failed: number;
+        results: { email: string; ok: boolean; status?: any; message?: any }[];
+    }>(null);
+
+    const [buildSel, setBuildSel] = React.useState<BuildSelectValue>({
+        projectId: null,
+        envId: null,
+        versionId: null,
+    });
+
+    React.useEffect(() => {
+        if (!emailsText) return;
+        setBulkReport(null);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [emailsText]);
+
     // Restore last selected role/domain once on mount
     React.useEffect(() => {
         try {
-            const savedDomain = localStorage.getItem(LS_DOMAIN_KEY);
-            if (savedDomain) setSelectedDomain(savedDomain);
-
             const savedRole = localStorage.getItem(LS_ROLE_KEY);
             if (savedRole && ROLES.includes(savedRole as Role)) setSelectedRole(savedRole as Role);
         } catch {
             // ignore
         }
     }, []);
-
-    // Persist selected domain
-    React.useEffect(() => {
-        if (!selectedDomain) return;
-        try {
-            localStorage.setItem(LS_DOMAIN_KEY, selectedDomain);
-        } catch {
-            // ignore
-        }
-    }, [selectedDomain]);
 
     // Persist selected role
     React.useEffect(() => {
@@ -107,29 +123,7 @@ export default function InviteUsersPage() {
             const list = Array.isArray(data) ? data : [];
             setDomains(list);
 
-            // Ensure selectedDomain is valid after loading domains
-            if (list.length > 0) {
-                const saved = (() => {
-                    try {
-                        return localStorage.getItem(LS_DOMAIN_KEY);
-                    } catch {
-                        return null;
-                    }
-                })();
-
-                const candidate = selectedDomain || saved;
-                const exists = candidate && list.some((d) => d.domain === candidate);
-
-                if (exists) {
-                    setSelectedDomain(candidate as string);
-                } else {
-                    setSelectedDomain(list[0].domain);
-                }
-            } else {
-                setSelectedDomain(null);
-            }
-
-            // Ensure role has a default (nice UX)
+            // Ensure role has a default
             if (!selectedRole) {
                 const savedRole = (() => {
                     try {
@@ -145,7 +139,6 @@ export default function InviteUsersPage() {
         } catch (e: any) {
             toast.error(e?.message ?? "Failed to load domains");
             setDomains([]);
-            setSelectedDomain(null);
         } finally {
             setLoadingDomains(false);
         }
@@ -169,20 +162,19 @@ export default function InviteUsersPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const fullEmail = React.useMemo(() => {
-        if (!selectedDomain) return "";
-        const lp = localPart.trim();
-        if (!lp) return "";
-        return `${lp}@${selectedDomain}`;
-    }, [localPart, selectedDomain]);
-
     const canSend = React.useMemo(() => {
         if (loadingDomains) return false;
-        if (!selectedDomain) return false;
         if (!selectedRole) return false;
-        if (!isValidLocalPart(localPart)) return false;
+
+        const emails = parseEmails(emailsText);
+        if (emails.length === 0) return false;
+        if (emails.length > 30) return false;
+
+        // basic validation
+        if (emails.some((e) => !isValidEmail(e))) return false;
+
         return true;
-    }, [loadingDomains, selectedDomain, selectedRole, localPart]);
+    }, [loadingDomains, selectedRole, emailsText]);
 
     const filteredInvites = React.useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -196,34 +188,52 @@ export default function InviteUsersPage() {
 
     async function sendInvite(e: React.FormEvent) {
         e.preventDefault();
-        if (!canSend) return;
+        if (!selectedRole) return;
+
+        const emails = parseEmails(emailsText).map((e) => e.toLowerCase());
+        if (emails.length === 0) return;
+
+        if (emails.length > 30) {
+            toast.error("Max 30 emails at a time");
+            return;
+        }
+
+        const invalid = emails.filter((em) => !isValidEmail(em));
+        if (invalid.length > 0) {
+            toast.error(`Invalid emails: ${invalid.slice(0, 3).join(", ")}${invalid.length > 3 ? "..." : ""}`);
+            return;
+        }
 
         setSending(true);
         try {
-            const email = fullEmail.toLowerCase();
+            console.log(buildSel.versionId);
+            if (!buildSel.versionId) return;
+            const resp = await apiFetch<any>("/api/admin/invites/bulk", {
+                method: "POST",
+                body: JSON.stringify({
+                    emails,
+                    role: selectedRole,
+                    versionId: buildSel.versionId
+                }),
+            });
 
-            const resp = await apiFetch<{ message: string }>(
-                "/api/admin/invites",
-                {
-                    method: "POST",
-                    body: JSON.stringify({
-                        email,
-                        name: name.trim() ? name.trim() : undefined,
-                        role: selectedRole,
-                    }),
-                },
-            );
+            const result = resp?.result;
+            if (result) {
+                setBulkReport(result);
+                toast.success(`Requested: ${result.requested}, Sent: ${result.sent}, Failed: ${result.failed}`);
+                
+            } else {
+                setBulkReport(null);
+                toast.success("Invites processed");
+            }
+            
+            // reset input box but keep role
+            setEmailsText("");
+            setBuildSel({ projectId: null, envId: null, versionId: null })
 
-            toast.success(resp?.message ?? "Invite sent");
-
-            // Reset only fields that change per-invite
-            setLocalPart("");
-            setName("");
-
-            // Keep domain + role selected for fast repeated invites
             await loadInvites();
         } catch (err: any) {
-            toast.error(err?.message ?? "Failed to send invite");
+            toast.error(err?.message ?? "Failed to send invites");
         } finally {
             setSending(false);
         }
@@ -254,15 +264,7 @@ export default function InviteUsersPage() {
                             </p>
                         ) : (
                             <form onSubmit={sendInvite} className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label>User name (optional)</Label>
-                                    <Input
-                                        value={name}
-                                        onChange={(e) => setName(e.target.value)}
-                                        placeholder="Full name"
-                                        disabled={sending}
-                                    />
-                                </div>
+                                
 
                                 <div className="space-y-2">
                                     <Label>Role</Label>
@@ -287,55 +289,80 @@ export default function InviteUsersPage() {
                                     </p>
                                 </div>
 
-                                <div className="space-y-2">
-                                    <Label>Email</Label>
+                                        <div className="space-y-2">
+                                            <Label>Emails (one per line, max 30)</Label>
 
-                                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_180px]">
-                                        <Input
-                                            value={localPart}
-                                            onChange={(e) => setLocalPart(e.target.value)}
-                                            placeholder="username"
-                                            disabled={sending}
-                                        />
+                                            <Textarea
+                                                value={emailsText}
+                                                onChange={(e) => setEmailsText(e.target.value)}
+                                                placeholder={`user1@domain.com\nuser2@domain.com\nuser3@domain.com`}
+                                                disabled={sending}
+                                                rows={autoRows(emailsText)}
+                                                className="resize-none"
+                                            />
 
-                                        <Select
-                                            value={selectedDomain ?? undefined}
-                                            onValueChange={(v) => setSelectedDomain(v)}
-                                            disabled={sending}
-                                        >
-                                            <SelectTrigger className="w-full">
-                                                <SelectValue placeholder="Domain" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {domains.map((d) => (
-                                                    <SelectItem key={d.id} value={d.domain}>
-                                                        {d.domain}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
+                                            <div className="text-xs text-muted-foreground flex items-center justify-between">
+                                                <span>{parseEmails(emailsText).length} / 30</span>
+                                                {parseEmails(emailsText).length > 30 ? (
+                                                    <span className="text-destructive">Too many emails</span>
+                                                ) : null}
+                                            </div>
+                                        </div>
+                                        <br/>
+                                        <Label>Select a Build to assign</Label>
 
-                                    <div className="text-xs text-muted-foreground">
-                                        {fullEmail ? (
-                                            <span>
-                                                Full email: <span className="font-medium">{fullEmail}</span>
-                                            </span>
-                                        ) : (
-                                            <span>Enter username and choose domain</span>
+                                        <BuildSelect value={buildSel} onChange={setBuildSel} />
+
+                                        <Button type="submit" disabled={!canSend || sending || !buildSel.projectId || !buildSel.envId || !buildSel.versionId}>
+                                            {sending ? "Sending..." : "Send OTP Invites"}
+                                        </Button>
+
+                                        {bulkReport && (
+                                            <div className="mt-4 rounded-md border p-3 space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                    <p className="text-sm font-medium">Bulk Invite Report</p>
+                                                    <Badge variant="secondary">
+                                                        Sent {bulkReport.sent} / {bulkReport.requested}
+                                                    </Badge>
+                                                </div>
+
+                                                <div className="text-xs text-muted-foreground">
+                                                    Failed: <span className="text-foreground">{bulkReport.failed}</span>
+                                                </div>
+
+                                                <ScrollArea className="h-40 pr-3">
+                                                    <div className="space-y-2">
+                                                        {bulkReport.results.map((r) => (
+                                                            <div key={r.email} className="flex items-start justify-between gap-3 rounded-md border p-2">
+                                                                <div className="min-w-0">
+                                                                    <p className="text-sm font-medium truncate">{r.email}</p>
+                                                                    {!r.ok && (
+                                                                        <p className="text-xs text-muted-foreground">
+                                                                            {r.status ? `Status: ${r.status} ` : ""}
+                                                                            {r.message ? `• ${r.message}` : ""}
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+
+                                                                <Badge variant={r.ok ? "secondary" : "outline"}>
+                                                                    {r.ok ? "SENT" : "FAILED"}
+                                                                </Badge>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </ScrollArea>
+
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => setBulkReport(null)}
+                                                    >
+                                                        Clear
+                                                    </Button>
+                                                </div>
+                                            </div>
                                         )}
-                                    </div>
-
-                                    {localPart && !isValidLocalPart(localPart) && (
-                                        <p className="text-xs text-destructive">
-                                            Only letters, numbers, dot, underscore, plus and hyphen are allowed. Do not type @.
-                                        </p>
-                                    )}
-                                </div>
-
-                                <Button type="submit" disabled={!canSend || sending}>
-                                    {sending ? "Sending..." : "Send OTP Invite"}
-                                </Button>
                             </form>
                         )}
                     </CardContent>

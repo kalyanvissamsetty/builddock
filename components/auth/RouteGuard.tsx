@@ -19,7 +19,7 @@ export function RouteGuard({ children }: { children: React.ReactNode }) {
 
         if (!me) {
             redirectedRef.current = true;
-            router.replace("/login");
+            router.replace("/otplogin");
             return;
         }
 

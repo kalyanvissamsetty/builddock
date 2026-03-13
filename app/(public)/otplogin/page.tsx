@@ -111,13 +111,6 @@ function LoginOtpForm() {
                             {loading ? "Sending OTP..." : "Send OTP"}
                         </Button>
                     </form>
-
-                    <p className="mt-4 text-center text-sm text-muted-foreground">
-                        Prefer password?{" "}
-                        <a href="/login" className="underline">
-                            Sign in
-                        </a>
-                    </p>
                 </CardContent>
             </Card>
         </div>

@@ -33,7 +33,7 @@ export function AppSidebar({ me }: Props) {
             console.log("Logout successful");
         } finally {
             console.log("Logout in finally block")
-            router.replace("/login");
+            router.replace("/otplogin");
         }
     }
 
@@ -141,10 +141,10 @@ export function AppSidebar({ me }: Props) {
 
             {/* Footer */}
             <div className="px-4 py-4 border-t space-y-3">
-                <Button variant="outline" className="w-full" onClick={() => router.push("/profile")}>
+                {/* <Button variant="outline" className="w-full" onClick={() => router.push("/profile")}>
                     <User className="mr-2 h-4 w-4" />
                     View Profile
-                </Button>
+                </Button> */}
                 <Button variant="outline" className="w-full" onClick={handleLogout}>
                     Log Out
                 </Button>
