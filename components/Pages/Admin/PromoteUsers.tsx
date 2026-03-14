@@ -12,7 +12,19 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Role } from "@/types";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type User = {
   id: number;
@@ -21,7 +33,8 @@ type User = {
 };
 
 const ROLES: Role[] = ["VIEWER", "MANAGER", "DEV"];
-const PAGE_SIZES = [5, 10, 20,] as const;
+const PAGE_SIZES = [5, 10, 20] as const;
+const DELETE_CONFIRMATION_SESSION_KEY = "skip-user-delete-confirmation";
 
 function normalize(str: string) {
   return str.trim().toLowerCase();
@@ -35,36 +48,41 @@ export default function PromoteUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [editedRoles, setEditedRoles] = useState<Record<number, Role>>({});
   const [loading, setLoading] = useState(false);
+  const [deletingUserId, setDeletingUserId] = useState<number | null>(null);
 
-  // Search + pagination state
   const [query, setQuery] = useState("");
   const [pageSize, setPageSize] = useState<(typeof PAGE_SIZES)[number]>(5);
   const [page, setPage] = useState(1);
 
-  // Debounced search input for performance on large lists
   const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [skipDeleteConfirm, setSkipDeleteConfirm] = useState(false);
+
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedUserForDelete, setSelectedUserForDelete] = useState<User | null>(null);
+  const [dontAskAgainChecked, setDontAskAgainChecked] = useState(false);
+
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedQuery(query), 200);
     return () => window.clearTimeout(t);
   }, [query]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const savedValue = window.sessionStorage.getItem(DELETE_CONFIRMATION_SESSION_KEY);
+    setSkipDeleteConfirm(savedValue === "true");
+  }, []);
+
   const [isPending, startTransition] = useTransition();
 
+  async function loadUsers() {
+    const data = await apiFetch<User[]>("/api/admin/users");
+    const nonAdminUsers = data.filter((u) => u.role !== "ADMIN");
+    nonAdminUsers.sort((a, b) => a.email.localeCompare(b.email));
+    setUsers(nonAdminUsers);
+  }
+
   useEffect(() => {
-    async function load() {
-      const data = await apiFetch<User[]>("/api/admin/users");
-
-      // If you truly never want ADMIN here, keep this filter.
-      // (Your old UI had "isAdmin" checks but also filtered them out.)
-      const nonAdminUsers = data.filter((u) => u.role !== "ADMIN");
-
-      // Optional: stable ordering for consistent paging
-      nonAdminUsers.sort((a, b) => a.email.localeCompare(b.email));
-
-      setUsers(nonAdminUsers);
-    }
-
-    load();
+    loadUsers();
   }, []);
 
   function onRoleChange(userId: number, role: Role) {
@@ -74,15 +92,62 @@ export default function PromoteUsersPage() {
     }));
   }
 
+  async function deleteUser(user: User, options?: { skippedConfirmation?: boolean }) {
+    try {
+      setDeletingUserId(user.id);
+
+      await apiFetch(`/api/admin/users/${user.id}`, {
+        method: "DELETE",
+      });
+
+      setUsers((prev) => prev.filter((existingUser) => existingUser.id !== user.id));
+
+      setEditedRoles((prev) => {
+        const next = { ...prev };
+        delete next[user.id];
+        return next;
+      });
+
+      toast.success(`User deleted: ${user.email}`);
+    } catch (error) {
+      console.error("Failed to delete user", error);
+      toast.error("Failed to delete user");
+    } finally {
+      setDeletingUserId(null);
+      setDeleteDialogOpen(false);
+      setSelectedUserForDelete(null);
+      setDontAskAgainChecked(false);
+    }
+  }
+
+  function handleDeleteClick(user: User) {
+    if (skipDeleteConfirm) {
+      deleteUser(user, { skippedConfirmation: true });
+      return;
+    }
+
+    setSelectedUserForDelete(user);
+    setDontAskAgainChecked(false);
+    setDeleteDialogOpen(true);
+  }
+
+  async function confirmDelete() {
+    if (!selectedUserForDelete) return;
+
+    if (dontAskAgainChecked && typeof window !== "undefined") {
+      window.sessionStorage.setItem(DELETE_CONFIRMATION_SESSION_KEY, "true");
+      setSkipDeleteConfirm(true);
+    }
+
+    await deleteUser(selectedUserForDelete);
+  }
+
   const filteredUsers = useMemo(() => {
     const q = normalize(debouncedQuery);
     if (!q) return users;
-
-    // Optimized: single pass, simple substring match
     return users.filter((u) => normalize(u.email).includes(q));
   }, [users, debouncedQuery]);
 
-  // Reset page when filters / page size changes
   useEffect(() => {
     setPage(1);
   }, [debouncedQuery, pageSize]);
@@ -108,7 +173,6 @@ export default function PromoteUsersPage() {
   async function saveChanges() {
     setLoading(true);
 
-    // Only PATCH rows that actually changed
     const changes: Array<{ userId: number; role: Role }> = [];
     for (const [userIdStr, role] of Object.entries(editedRoles)) {
       const userId = Number(userIdStr);
@@ -128,11 +192,11 @@ export default function PromoteUsersPage() {
       }
 
       setEditedRoles({});
-
-      const refreshed = await apiFetch<User[]>("/api/admin/users");
-      const nonAdminUsers = refreshed.filter((u) => u.role !== "ADMIN");
-      nonAdminUsers.sort((a, b) => a.email.localeCompare(b.email));
-      setUsers(nonAdminUsers);
+      await loadUsers();
+      toast.success("User roles updated successfully.");
+    } catch (error) {
+      console.error("Failed to save role changes", error);
+      toast.error("Failed to save role changes");
     } finally {
       setLoading(false);
     }
@@ -148,147 +212,233 @@ export default function PromoteUsersPage() {
   const pageEnd = Math.min(totalItems, currentPage * pageSize);
 
   return (
-    <div className="h-full flex flex-col min-h-0 max-w-5xl mx-auto">
-      {/* Header + search (fixed) */}
-      <div className="space-y-4 pb-4">
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-semibold">User Role Management</h1>
-            <p className="text-sm text-muted-foreground">
-              {totalItems === 0
-                ? "No users found."
-                : `Showing ${pageStart}–${pageEnd} of ${totalItems}`}
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="w-full sm:w-72">
-              <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search by email..."
-              />
+    <>
+      <div className="h-full flex flex-col min-h-0 max-w-5xl mx-auto">
+        <div className="space-y-4 pb-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div className="space-y-1">
+              <h1 className="text-2xl font-semibold">User Role Management</h1>
+              <p className="text-sm text-muted-foreground">
+                {totalItems === 0
+                  ? "No users found."
+                  : `Showing ${pageStart}–${pageEnd} of ${totalItems}`}
+              </p>
             </div>
 
-            <Select
-              value={String(pageSize)}
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              onValueChange={(v) => setPageSize(Number(v) as any)}
-            >
-              <SelectTrigger className="w-36">
-                <SelectValue placeholder="Page size" />
-              </SelectTrigger>
-              <SelectContent>
-                {PAGE_SIZES.map((s) => (
-                  <SelectItem key={s} value={String(s)}>
-                    {s} / page
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Button
-              variant="outline"
-              onClick={() => {
-                setQuery("");
-                setDebouncedQuery("");
-              }}
-              disabled={!query}
-            >
-              Clear
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Content area that can shrink (key for scroll) */}
-      <div className="flex flex-col min-h-0 flex-1 gap-4">
-        {/* ✅ Users list box: fixed region, scroll inside */}
-        <div className="border rounded-md overflow-hidden flex-1 min-h-0">
-          <div className="h-full overflow-y-auto divide-y">
-            {pagedUsers.map((u) => {
-              const pendingRole = editedRoles[u.id];
-              const isModified = !!pendingRole && pendingRole !== u.role;
-              const isAdmin = u.role === "ADMIN";
-
-              return (
-                <div
-                  key={u.id}
-                  className={`flex items-center justify-between p-4 ${isModified ? "bg-yellow-50" : ""
-                    }`}
-                >
-                  <div>
-                    <p className="font-medium">{u.email}</p>
-                    {isAdmin && <Badge variant="destructive">ADMIN</Badge>}
-                    {isModified && (
-                      <p className="text-xs text-yellow-600">Unsaved changes</p>
-                    )}
-                  </div>
-
-                  <Select
-                    disabled={isAdmin}
-                    value={(pendingRole ?? u.role) as string}
-                    onValueChange={(role) => onRoleChange(u.id, role as Role)}
-                  >
-                    <SelectTrigger className="w-40">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ROLES.map((r) => (
-                        <SelectItem key={r} value={r}>
-                          {r}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              );
-            })}
-
-            {pagedUsers.length === 0 && (
-              <div className="p-6 text-sm text-muted-foreground">
-                No users match your search.
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="w-full sm:w-72">
+                <Input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search by email..."
+                />
               </div>
+
+              <Select
+                value={String(pageSize)}
+                onValueChange={(v) =>
+                  setPageSize(Number(v) as (typeof PAGE_SIZES)[number])
+                }
+              >
+                <SelectTrigger className="w-36">
+                  <SelectValue placeholder="Page size" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAGE_SIZES.map((s) => (
+                    <SelectItem key={s} value={String(s)}>
+                      {s} / page
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setQuery("");
+                  setDebouncedQuery("");
+                }}
+                disabled={!query}
+              >
+                Clear
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col min-h-0 flex-1 gap-4">
+          <div className="border rounded-md overflow-hidden flex-1 min-h-0">
+            <div className="h-full overflow-y-auto divide-y">
+              {pagedUsers.map((u) => {
+                const pendingRole = editedRoles[u.id];
+                const isModified = !!pendingRole && pendingRole !== u.role;
+                const isAdmin = u.role === "ADMIN";
+                const isDeleting = deletingUserId === u.id;
+
+                return (
+                  <div
+                    key={u.id}
+                    className={`flex items-center justify-between gap-4 p-4 ${isModified ? "bg-yellow-50" : ""
+                      }`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium break-all">{u.email}</p>
+                      {isAdmin && <Badge variant="destructive">ADMIN</Badge>}
+                      {isModified && (
+                        <p className="text-xs text-yellow-600">Unsaved changes</p>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Select
+                        disabled={isAdmin || isDeleting}
+                        value={(pendingRole ?? u.role) as string}
+                        onValueChange={(role) => onRoleChange(u.id, role as Role)}
+                      >
+                        <SelectTrigger className="w-40">
+                          <SelectValue />
+                        </SelectTrigger>
+
+                        <SelectContent>
+                          {ROLES.map((r) => (
+                            <SelectItem key={r} value={r}>
+                              {r}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeleteClick(u)}
+                        disabled={isDeleting || loading}
+                      >
+                        {isDeleting ? "Deleting..." : "Delete"}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {pagedUsers.length === 0 && (
+                <div className="p-6 text-sm text-muted-foreground">
+                  No users match your search.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-muted-foreground">
+              Page {currentPage} of {totalPages}
+              {isPending ? " (updating...)" : ""}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => goToPage(1)}
+                disabled={currentPage === 1}
+              >
+                First
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                Prev
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => goToPage(totalPages)}
+                disabled={currentPage === totalPages}
+              >
+                Last
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3">
+            {modifiedCount > 0 && (
+              <p className="text-sm text-muted-foreground self-center">
+                You have {modifiedCount} unsaved change{modifiedCount === 1 ? "" : "s"}
+              </p>
             )}
-          </div>
-        </div>
 
-        {/* Pagination (fixed, always visible) */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="text-sm text-muted-foreground">
-            Page {currentPage} of {totalPages}
-            {isPending ? " (updating...)" : ""}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => goToPage(1)} disabled={currentPage === 1}>
-              First
-            </Button>
-            <Button variant="outline" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1}>
-              Prev
-            </Button>
-            <Button variant="outline" onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages}>
-              Next
-            </Button>
-            <Button variant="outline" onClick={() => goToPage(totalPages)} disabled={currentPage === totalPages}>
-              Last
+            <Button disabled={loading || modifiedCount === 0} onClick={saveChanges}>
+              {loading ? "Saving..." : "Save Changes"}
             </Button>
           </div>
-        </div>
-
-        {/* Save bar (fixed, always visible) */}
-        <div className="flex justify-end gap-3">
-          {modifiedCount > 0 && (
-            <p className="text-sm text-muted-foreground self-center">
-              You have {modifiedCount} unsaved change{modifiedCount === 1 ? "" : "s"}
-            </p>
-          )}
-
-          <Button disabled={loading || modifiedCount === 0} onClick={saveChanges}>
-            {loading ? "Saving..." : "Save Changes"}
-          </Button>
         </div>
       </div>
-    </div>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete user?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedUserForDelete ? (
+                <>
+                  Are you sure you want to delete{" "}
+                  <span className="font-medium text-foreground">
+                    {selectedUserForDelete.email}
+                  </span>
+                  ? This action cannot be undone.
+                </>
+              ) : (
+                "Are you sure you want to delete this user?"
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="dont-show-delete-confirm-again"
+              checked={dontAskAgainChecked}
+              onCheckedChange={(checked) => setDontAskAgainChecked(checked === true)}
+              disabled={!!deletingUserId}
+            />
+            <label
+              htmlFor="dont-show-delete-confirm-again"
+              className="text-sm text-muted-foreground leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Don’t show this confirmation again for this session
+            </label>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={!!deletingUserId}
+              onClick={() => {
+                setDontAskAgainChecked(false);
+                setSelectedUserForDelete(null);
+              }}
+            >
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                confirmDelete();
+              }}
+              disabled={!!deletingUserId}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletingUserId ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

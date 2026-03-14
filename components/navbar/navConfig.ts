@@ -29,7 +29,7 @@ export const NAV_ITEMS: NavItem[] = [
     ],
   },
   {
-    label: "Users",
+    label: "User Management",
     href: "/users",
     children: [
       {
@@ -41,7 +41,7 @@ export const NAV_ITEMS: NavItem[] = [
         href: "/addusers",
       },
       {
-        label: "Promote Users",
+        label: "Promote & Delete Users",
         href: "/promoteusers",
       }
     ],
