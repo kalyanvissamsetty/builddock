@@ -338,7 +338,7 @@ function VerifyOtpForm() {
         </CardContent>
       </Card>
 
-      <p className="mt-4 text-center text-sm text-muted-foreground">
+      {/* <p className="mt-4 text-center text-sm text-muted-foreground">
         Go back to{" "}
         <Link href="/login" className="underline underline-offset-4 hover:text-foreground">
           Login
@@ -348,7 +348,7 @@ function VerifyOtpForm() {
           Signup
         </Link>
         ?
-      </p>
+      </p> */}
     </div>
   );
 
