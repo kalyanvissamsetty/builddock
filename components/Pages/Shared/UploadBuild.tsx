@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ProjectSelect } from "../../upload/project-select";
 import { EnvironmentSelect } from "../../upload/env-select";
 import { FileDropzone } from "../../upload/file-dropzone";
-import { apiFetch } from "../../lib/api";
+import { apiFetch, getApiBase } from "../../lib/api";
 import { VersionSelect } from "../../upload/version-select";
 import { UploadSuccess } from "../../upload/dialog/UploadSuccess";
 import { Project, Environment, Version, UploadBuildResponse } from "@/types";
@@ -125,10 +125,13 @@ export function UploadBuild() {
   function connectToProgress(uploadId: string) {
     cleanupSse();
 
+    const apiBase = getApiBase() ?? "";
     const es = new EventSource(
-      `/api/builds/upload/progress/${uploadId}`,
+      `${apiBase}/api/builds/upload/progress/${uploadId}`,
       { withCredentials: true },
     );
+
+
 
     eventSourceRef.current = es;
 
