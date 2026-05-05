@@ -57,5 +57,13 @@ export const NAV_ITEMS: NavItem[] = [
   {
     label: "Environments",
     href: "/manageenvironments",
+  },
+  {
+    label: "Create Ticket",
+    href: "/createticket"
+  },
+  {
+    label: "View Tickets",
+    href: "/viewtickets"
   }
 ];

@@ -29,6 +29,6 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
-  ],
+, "components/Pages/GraphicReviews/TicketDetailsPa"  ],
   "exclude": ["node_modules"]
 }
