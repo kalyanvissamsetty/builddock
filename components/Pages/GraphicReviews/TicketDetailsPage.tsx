@@ -4,7 +4,7 @@ import * as React from "react";
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
-import { Download, Expand, UploadCloud, Plus } from "lucide-react";
+import { Download, UploadCloud } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +28,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FullscreenImageDialog } from "./FullscreenImageDialog";
 
 type Comment = {
     id: number;
@@ -77,30 +77,6 @@ const MOCK_TICKETS_BY_ID: Record<string, Ticket> = {
         ],
     },
 };
-
-function FullscreenImageDialog({ title, imageUrl }: { title: string; imageUrl: string }) {
-    return (
-        <Dialog>
-            <DialogTrigger asChild>
-                <Button variant="outline" size="icon" title="Fullscreen">
-                    <Expand className="h-4 w-4" />
-                </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-5xl">
-                <DialogHeader>
-                    <DialogTitle>{title}</DialogTitle>
-                    <DialogDescription>Fullscreen preview</DialogDescription>
-                </DialogHeader>
-                <div className="relative h-[70vh] w-full overflow-hidden rounded-md border bg-muted">
-                    <Image src={imageUrl} alt={title} fill className="object-contain" unoptimized />
-                </div>
-                <DialogFooter>
-                    <Button variant="outline">Close</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-}
 
 function CommentsDialog({ comments }: { comments: Comment[] }) {
     const [sort, setSort] = React.useState<"NEWEST" | "OLDEST">("NEWEST");

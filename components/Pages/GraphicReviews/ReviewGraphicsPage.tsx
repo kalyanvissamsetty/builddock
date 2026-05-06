@@ -4,7 +4,7 @@ import * as React from "react";
 import Image from "next/image";
 import { toast } from "sonner";
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -20,7 +20,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Download, MessageSquarePlus, MessageSquareText, X, Expand } from "lucide-react";
+import { Download, MessageSquarePlus, MessageSquareText, X } from "lucide-react";
 import {
     Select,
     SelectContent,
@@ -28,6 +28,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { FullscreenImageDialog } from "./FullscreenImageDialog";
 
 type Comment = {
     id: number;
@@ -140,38 +141,6 @@ function AddCommentDialog({ onSubmit }: { onSubmit: (text: string) => void }) {
                     <Button variant="outline" onClick={() => setOpen(false)}>
                         Cancel
                     </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-}
-
-function FullscreenImageDialog({
-    title,
-    imageUrl,
-}: {
-    title: string;
-    imageUrl: string;
-}) {
-    return (
-        <Dialog>
-            <DialogTrigger asChild>
-                <Button variant="outline" size="icon" className="shrink-0" title="Fullscreen">
-                    <Expand className="h-4 w-4" />
-                </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-5xl">
-                <DialogHeader>
-                    <DialogTitle>{title}</DialogTitle>
-                    <DialogDescription>Preview in full screen</DialogDescription>
-                </DialogHeader>
-
-                <div className="relative h-[70vh] w-full overflow-hidden rounded-md border bg-muted">
-                    <Image src={imageUrl} alt={title} fill className="object-contain" unoptimized />
-                </div>
-
-                <DialogFooter>
-                    <Button variant="outline">Close</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
