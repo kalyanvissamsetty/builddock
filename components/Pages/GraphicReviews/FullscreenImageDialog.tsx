@@ -98,7 +98,15 @@ export function FullscreenImageDialog({
                 </Button>
             </DialogTrigger>
 
-            <DialogContent className="!flex max-h-[calc(100dvh-2rem)] flex-col gap-3 overflow-hidden p-4 sm:max-w-6xl sm:p-5">
+            <DialogContent
+                className="gap-3 overflow-hidden p-4 sm:max-w-6xl sm:p-5"
+                style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    height: "calc(100dvh - 2rem)",
+                    maxHeight: "calc(100dvh - 2rem)",
+                }}
+            >
                 <DialogHeader className="shrink-0 pr-8">
                     <DialogTitle>{title}</DialogTitle>
                     <DialogDescription>Zoom in, drag to pan, or use the mouse wheel.</DialogDescription>
