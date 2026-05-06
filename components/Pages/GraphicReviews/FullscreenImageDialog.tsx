@@ -245,9 +245,9 @@ export function FullscreenImageDialog({
                         <Image
                             src={imageUrl}
                             alt={title}
-                            width={1400}
-                            height={900}
-                            className="pointer-events-none h-auto w-auto max-h-full max-w-full object-contain"
+                            fill
+                            sizes="min(100vw, 72rem)"
+                            className="pointer-events-none object-contain"
                             draggable={false}
                             unoptimized
                         />
