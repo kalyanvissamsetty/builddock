@@ -84,6 +84,28 @@ export function FullscreenImageDialog({
         });
     }
 
+    React.useEffect(() => {
+        if (!open) return;
+
+        function onWheel(event: WheelEvent) {
+            const viewer = viewerRef.current;
+            if (!viewer || !viewer.contains(event.target as Node)) return;
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            const zoomDelta = event.deltaY > 0 ? -0.15 : 0.15;
+            zoomBy(zoomDelta);
+        }
+
+        window.addEventListener("wheel", onWheel, { passive: false, capture: true });
+
+        return () => {
+            window.removeEventListener("wheel", onWheel, { capture: true });
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open]);
+
     return (
         <Dialog
             open={open}
@@ -158,10 +180,6 @@ export function FullscreenImageDialog({
                     ref={viewerRef}
                     tabIndex={0}
                     className="relative min-h-[260px] flex-1 touch-none select-none overflow-hidden rounded-md border bg-muted outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    onWheel={(e) => {
-                        e.preventDefault();
-                        zoomBy(e.deltaY > 0 ? -0.15 : 0.15);
-                    }}
                     onDoubleClick={() => {
                         if (zoom === MIN_ZOOM) setZoomLevel(2);
                         else resetView();
