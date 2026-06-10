@@ -327,6 +327,11 @@ function UploadNewVersionDialog({
         setProgress({ percent: 0, status: "idle" });
     }
 
+    function closeAndReset() {
+        reset();
+        setOpen(false);
+    }
+
     return (
         <Dialog
             open={open}
@@ -590,7 +595,7 @@ function UploadNewVersionDialog({
                                     percent: 100,
                                     message: "Uploaded",
                                 });
-                                setOpen(false);
+                                closeAndReset();
                             } catch (err: any) {
                                 setProgress({
                                     status: "error",
@@ -606,7 +611,7 @@ function UploadNewVersionDialog({
                     >
                         {uploading ? "Uploading..." : "Upload"}
                     </Button>
-                    <Button variant="outline" disabled={uploading} onClick={() => setOpen(false)}>
+                    <Button variant="outline" disabled={uploading} onClick={closeAndReset}>
                         Cancel
                     </Button>
                 </DialogFooter>
