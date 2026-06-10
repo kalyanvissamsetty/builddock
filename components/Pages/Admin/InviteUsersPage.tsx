@@ -96,6 +96,8 @@ export default function InviteUsersPage() {
         requested: number;
         sent: number;
         failed: number;
+        blockedAlreadyVerified?: number;
+        blockedAlreadyVerifiedEmails?: string[];
         results: { email: string; ok: boolean; status?: any; message?: any }[];
     }>(null);
 
@@ -252,7 +254,8 @@ export default function InviteUsersPage() {
             const result = resp?.result;
             if (result) {
                 setBulkReport(result);
-                toast.success(`Requested: ${result.requested}, Sent: ${result.sent}, Failed: ${result.failed}`);
+                const blocked = result.blockedAlreadyVerified ?? 0;
+                toast.success(`Requested: ${result.requested}, Sent: ${result.sent}, Failed: ${result.failed}, Blocked: ${blocked}`);
                 
             } else {
                 setBulkReport(null);
@@ -363,7 +366,19 @@ export default function InviteUsersPage() {
 
                                                 <div className="text-xs text-muted-foreground">
                                                     Failed: <span className="text-foreground">{bulkReport.failed}</span>
+                                                    {typeof bulkReport.blockedAlreadyVerified === "number" && (
+                                                        <>
+                                                            {" "}• Already verified: <span className="text-foreground">{bulkReport.blockedAlreadyVerified}</span>
+                                                        </>
+                                                    )}
                                                 </div>
+
+                                                {bulkReport.blockedAlreadyVerifiedEmails && bulkReport.blockedAlreadyVerifiedEmails.length > 0 && (
+                                                    <div className="rounded-md bg-muted/40 p-2 text-xs text-muted-foreground">
+                                                        <p className="font-medium text-foreground">Skipped verified users</p>
+                                                        <p className="break-words">{bulkReport.blockedAlreadyVerifiedEmails.join(", ")}</p>
+                                                    </div>
+                                                )}
 
                                                 <ScrollArea className="h-40 pr-3">
                                                     <div className="space-y-2">
