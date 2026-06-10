@@ -2,7 +2,6 @@
 
 import { apiFetch } from "@/components/lib/api";
 import { cn } from "@/components/lib/utils";
-import { Role } from "@/types";
 import {
   Combobox,
   ComboboxContent,
@@ -36,7 +35,7 @@ export function ViewerSelect({ value, onChange, className }: Props) {
     async function loadViewers() {
       setLoading(true);
       try {
-        const data = await apiFetch<Viewer[]>("/api/admin/users");
+        const data = await apiFetch<Viewer[]>("/api/admin/users?module=WEBGL");
         const nonAdmin = data.filter((u) => u.role === "VIEWER");
         if (mounted) setViewers(nonAdmin);
       } finally {

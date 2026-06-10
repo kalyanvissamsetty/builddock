@@ -12,8 +12,9 @@ import { useAuth } from "@/components/auth/useAuth";
 import { toast } from "sonner";
 import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { defaultRouteForRole } from "@/components/auth/defaultRoute";
+import { getDefaultRouteForDomain, useSelectedDomain } from "@/components/auth/domain";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
+import { Badge } from "@/components/ui/badge";
 type ProfileResponse = {
     id: number;
     name: string;
@@ -86,6 +87,7 @@ function PasswordInput({
 
 export function ProfilePage() {
     const { me, refreshMe } = useAuth();
+    const { selectedDomain } = useSelectedDomain(me);
     const router = useRouter();
 
     const [loading, setLoading] = useState(true);
@@ -214,7 +216,8 @@ export function ProfilePage() {
     }
 
     function handleGoBack() {
-        router.push(defaultRouteForRole(me?.role ?? "VIEWER"))
+        if (!me) return;
+        router.push(getDefaultRouteForDomain(me, selectedDomain));
     }
 
     if (loading) {
@@ -267,8 +270,18 @@ export function ProfilePage() {
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-sm font-medium">Role</label>
-                        <Input value={me?.role ?? ""} readOnly disabled />
+                        <label className="text-sm font-medium">Domain Access</label>
+                        <div className="flex min-h-10 flex-wrap items-center gap-2 rounded-md border bg-muted/30 px-3 py-2">
+                            {(me?.moduleAccess ?? []).length > 0 ? (
+                                me?.moduleAccess?.map((access) => (
+                                    <Badge key={access.module} variant="secondary">
+                                        {access.module}: {access.role.displayName || access.role.key}
+                                    </Badge>
+                                ))
+                            ) : (
+                                <span className="text-sm text-muted-foreground">No domain access assigned</span>
+                            )}
+                        </div>
                     </div>
 
                     <Button

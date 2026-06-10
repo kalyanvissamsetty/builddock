@@ -11,5 +11,11 @@ export const ROUTES: Record<string, RouteKey> = {
     "/addusers": "addusers",
     "/promoteusers": "promoteusers",
     "/mybuilds": "mybuilds",
-    "/allbuilds": "viewallbuilds"
+    "/allbuilds": "viewallbuilds",
+    "/graphicprojects": "graphicprojects",
+    "/graphicprojectaccess": "graphicprojectaccess",
+    "/assigntickets": "graphicprojectaccess",
+    "/createticket": "createticket",
+    "/viewtickets": "viewtickets",
+    "/profileselection": "profileselection"
 };

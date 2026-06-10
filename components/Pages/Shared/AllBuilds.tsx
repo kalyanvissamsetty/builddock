@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/command";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/components/auth/useAuth";
+import { getDomainRole } from "@/components/auth/domain";
 
 type Uploader = { name?: string | null; email: string };
 
@@ -126,6 +127,7 @@ export default function AllBuilds() {
     const [assigning, setAssigning] = useState(false);
 
     const { me } = useAuth()
+    const webglRole = me ? getDomainRole(me, "WEBGL") : null;
     useEffect(() => {
         loadAll();
     }, []);
@@ -394,7 +396,7 @@ export default function AllBuilds() {
                                 <CardHeader className="space-y-2">
                                     <div className="flex items-start justify-between gap-2">
                                         <CardTitle className="text-base font-sans font-normal">{project}</CardTitle>
-                                        {(me?.role === "ADMIN" || me?.role === "MANAGER") && (
+                                        {(webglRole === "ADMIN" || webglRole === "MANAGER") && (
                                             <Button
                                                 variant="outline"
                                                 size="icon"

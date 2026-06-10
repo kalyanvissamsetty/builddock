@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { useAuth } from "@/components/auth/useAuth";
+import { DOMAIN_LABELS, useSelectedDomain } from "@/components/auth/domain";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -24,6 +26,7 @@ import {
 type AllowedDomain = {
     id: number;
     domain: string;
+    module?: "WEBGL" | "GRAPHICS";
     createdAt: string;
 };
 
@@ -49,6 +52,8 @@ function isValidDomain(d: string) {
 }
 
 export default function ManageEmailDomainsPage() {
+    const { me } = useAuth();
+    const { selectedDomain } = useSelectedDomain(me);
     const [domains, setDomains] = React.useState<AllowedDomain[]>([]);
     const [loading, setLoading] = React.useState(true);
 
@@ -66,7 +71,7 @@ export default function ManageEmailDomainsPage() {
     async function loadDomains() {
         setLoading(true);
         try {
-            const data = await apiFetch<AllowedDomain[]>("/api/admin/allowed-domains");
+            const data = await apiFetch<AllowedDomain[]>(`/api/admin/allowed-domains?module=${selectedDomain}`);
             setDomains(Array.isArray(data) ? data : []);
         } catch (e: any) {
             toast.error(e?.message ?? "Failed to load domains");
@@ -77,8 +82,12 @@ export default function ManageEmailDomainsPage() {
     }
 
     React.useEffect(() => {
+        setDomains([]);
+        setSummary(null);
+        setActiveDomain(null);
         loadDomains();
-    }, []);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedDomain]);
 
     const filtered = React.useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -99,7 +108,7 @@ export default function ManageEmailDomainsPage() {
         try {
             await apiFetch("/api/admin/allowed-domains", {
                 method: "POST",
-                body: JSON.stringify({ domain: d }),
+                body: JSON.stringify({ domain: d, module: selectedDomain }),
             });
             toast.success("Domain added");
             setDomainInput("");
@@ -116,7 +125,7 @@ export default function ManageEmailDomainsPage() {
         setSummary(null);
         try {
             const data = await apiFetch<DomainSummary>(
-                `/api/admin/allowed-domains/${domainId}/summary`,
+                `/api/admin/allowed-domains/${domainId}/summary?module=${selectedDomain}`,
                 { method: "GET" },
             );
             setSummary(data);
@@ -131,8 +140,9 @@ export default function ManageEmailDomainsPage() {
         console.log(withUsers," withusers")
         setDeleting(true);
         try {
-            const qs = withUsers ? "?deleteUsers=true" : "";
-            await apiFetch(`/api/admin/allowed-domains/${domainId}${qs}`, {
+            const qs = new URLSearchParams({ module: selectedDomain });
+            if (withUsers) qs.set("deleteUsers", "true");
+            await apiFetch(`/api/admin/allowed-domains/${domainId}?${qs.toString()}`, {
                 method: "DELETE",
             });
             toast.success(withUsers ? "Domain and VIEWERS deleted" : "Domain deleted, no VIEWERS got deleted");
@@ -149,7 +159,7 @@ export default function ManageEmailDomainsPage() {
             <div className="mb-4">
                 <h1 className="text-2xl font-semibold">Allowed Email Domains</h1>
                 <p className="text-sm text-muted-foreground">
-                    Only users from these domains can use OTP login and be invited.
+                    Only users from these domains can be invited into {DOMAIN_LABELS[selectedDomain]}.
                 </p>
             </div>
 
@@ -183,7 +193,7 @@ export default function ManageEmailDomainsPage() {
                 {/* Right */}
                 <Card className="flex flex-col">
                     <CardHeader className="space-y-3 pb-3">
-                        <CardTitle>All Domains</CardTitle>
+                        <CardTitle>{DOMAIN_LABELS[selectedDomain]} Domains</CardTitle>
                         <Input
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}

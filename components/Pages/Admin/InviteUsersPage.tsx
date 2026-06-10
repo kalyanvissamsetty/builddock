@@ -17,9 +17,13 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Role } from "@/types";
 import { Label } from "@/components/ui/label";
 import BuildSelect, { BuildSelectValue } from "../BuildSelect";
+import { useAuth } from "@/components/auth/useAuth";
+import { DOMAIN_LABELS, useSelectedDomain } from "@/components/auth/domain";
+
+type InviteModule = "WEBGL" | "GRAPHICS";
+type InviteRole = string;
 
 type AllowedDomain = {
     id: number;
@@ -35,10 +39,16 @@ type Invite = {
     name?: string | null;
     status: InviteStatus;
     createdAt: string;
+    module?: InviteModule;
+    role?: string;
 };
 
-
-const ROLES: Role[] = ["VIEWER", "MANAGER","DEV"];
+type RoleOption = {
+    id: number;
+    key: string;
+    displayName: string;
+    module: InviteModule;
+};
 
 const LS_ROLE_KEY = "invite_selected_role";
 
@@ -63,10 +73,15 @@ function isValidEmail(email: string) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 export default function InviteUsersPage() {
+    const { me } = useAuth();
+    const { selectedDomain } = useSelectedDomain(me);
     const [domains, setDomains] = React.useState<AllowedDomain[]>([]);
     const [loadingDomains, setLoadingDomains] = React.useState(true);
+    const [roles, setRoles] = React.useState<RoleOption[]>([]);
+    const [loadingRoles, setLoadingRoles] = React.useState(true);
 
-    const [selectedRole, setSelectedRole] = React.useState<Role | null>(null);
+    const selectedModule = selectedDomain as InviteModule;
+    const [selectedRole, setSelectedRole] = React.useState<InviteRole | null>(null);
     const [sending, setSending] = React.useState(false);
 
     const [emailsText, setEmailsText] = React.useState("");
@@ -96,16 +111,6 @@ export default function InviteUsersPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [emailsText]);
 
-    // Restore last selected role/domain once on mount
-    React.useEffect(() => {
-        try {
-            const savedRole = localStorage.getItem(LS_ROLE_KEY);
-            if (savedRole && ROLES.includes(savedRole as Role)) setSelectedRole(savedRole as Role);
-        } catch {
-            // ignore
-        }
-    }, []);
-
     // Persist selected role
     React.useEffect(() => {
         if (!selectedRole) return;
@@ -114,28 +119,44 @@ export default function InviteUsersPage() {
         } catch {
             // ignore
         }
-    }, [selectedRole]);
+    }, [selectedModule, selectedRole]);
+
+    React.useEffect(() => {
+        if (roles.length === 0) {
+            setSelectedRole(null);
+            return;
+        }
+
+        if (selectedRole && roles.some((role) => role.key === selectedRole)) return;
+
+        try {
+            const savedRole = localStorage.getItem(LS_ROLE_KEY);
+            const savedRoleIsAllowed = roles.some((role) => role.key === savedRole);
+            setSelectedRole(savedRoleIsAllowed ? savedRole : roles[0].key);
+        } catch {
+            setSelectedRole(roles[0].key);
+        }
+    }, [roles, selectedRole]);
+
+    async function loadRoles() {
+        setLoadingRoles(true);
+        try {
+            const data = await apiFetch<RoleOption[]>(`/api/admin/roles?module=${selectedModule}`);
+            setRoles(Array.isArray(data) ? data : []);
+        } catch (e: any) {
+            toast.error(e?.message ?? "Failed to load roles");
+            setRoles([]);
+        } finally {
+            setLoadingRoles(false);
+        }
+    }
 
     async function loadDomains() {
         setLoadingDomains(true);
         try {
-            const data = await apiFetch<AllowedDomain[]>("/api/admin/allowed-domains");
+            const data = await apiFetch<AllowedDomain[]>(`/api/admin/allowed-domains?module=${selectedModule}`);
             const list = Array.isArray(data) ? data : [];
             setDomains(list);
-
-            // Ensure role has a default
-            if (!selectedRole) {
-                const savedRole = (() => {
-                    try {
-                        return localStorage.getItem(LS_ROLE_KEY);
-                    } catch {
-                        return null;
-                    }
-                })();
-
-                if (savedRole && ROLES.includes(savedRole as Role)) setSelectedRole(savedRole as Role);
-                else setSelectedRole("VIEWER");
-            }
         } catch (e: any) {
             toast.error(e?.message ?? "Failed to load domains");
             setDomains([]);
@@ -144,26 +165,37 @@ export default function InviteUsersPage() {
         }
     }
 
-    async function loadInvites() {
+    const loadInvites = React.useCallback(async () => {
         setLoadingInvites(true);
         try {
-            const data = await apiFetch<Invite[]>("/api/admin/invites");
+            const data = await apiFetch<Invite[]>(`/api/admin/invites?module=${selectedModule}`);
             setInvites(Array.isArray(data) ? data : []);
         } catch {
             setInvites([]);
         } finally {
             setLoadingInvites(false);
         }
-    }
+    }, [selectedModule]);
 
     React.useEffect(() => {
+        setDomains([]);
+        setRoles([]);
+        setSelectedRole(null);
         loadDomains();
-        loadInvites();
+        loadRoles();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [selectedModule]);
+
+    React.useEffect(() => {
+        setInvites([]);
+        setBulkReport(null);
+        setBuildSel({ projectId: null, envId: null, versionId: null });
+        loadInvites();
+    }, [loadInvites]);
 
     const canSend = React.useMemo(() => {
         if (loadingDomains) return false;
+        if (loadingRoles) return false;
         if (!selectedRole) return false;
 
         const emails = parseEmails(emailsText);
@@ -174,7 +206,7 @@ export default function InviteUsersPage() {
         if (emails.some((e) => !isValidEmail(e))) return false;
 
         return true;
-    }, [loadingDomains, selectedRole, emailsText]);
+    }, [loadingDomains, loadingRoles, selectedRole, emailsText]);
 
     const filteredInvites = React.useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -206,13 +238,13 @@ export default function InviteUsersPage() {
 
         setSending(true);
         try {
-            console.log(buildSel.versionId);
-            if (!buildSel.versionId) return;
+            if (selectedModule === "WEBGL" && !buildSel.versionId) return;
             const resp = await apiFetch<any>("/api/admin/invites/bulk", {
                 method: "POST",
                 body: JSON.stringify({
                     emails,
                     role: selectedRole,
+                    module: selectedModule,
                     versionId: buildSel.versionId
                 }),
             });
@@ -229,7 +261,7 @@ export default function InviteUsersPage() {
             
             // reset input box but keep role
             setEmailsText("");
-            setBuildSel({ projectId: null, envId: null, versionId: null })
+            if (selectedModule === "WEBGL") setBuildSel({ projectId: null, envId: null, versionId: null })
 
             await loadInvites();
         } catch (err: any) {
@@ -244,7 +276,7 @@ export default function InviteUsersPage() {
             <div className="mb-4">
                 <h1 className="text-2xl font-semibold">Invite Users (OTP)</h1>
                 <p className="text-sm text-muted-foreground">
-                    You can Invite users from allowed domains. Users can sign in with OTP.
+                    Invite users into {DOMAIN_LABELS[selectedModule]}. Users can sign in with OTP.
                 </p>
             </div>
 
@@ -258,34 +290,34 @@ export default function InviteUsersPage() {
                     <CardContent className="space-y-4">
                         {loadingDomains ? (
                             <p className="text-sm text-muted-foreground">Loading domains...</p>
+                        ) : loadingRoles ? (
+                            <p className="text-sm text-muted-foreground">Loading roles...</p>
                         ) : domains.length === 0 ? (
                             <p className="text-sm text-destructive">
                                 No allowed domains. Add a domain first.
                             </p>
                         ) : (
                             <form onSubmit={sendInvite} className="space-y-4">
-                                
-
                                 <div className="space-y-2">
                                     <Label>Role</Label>
                                     <Select
                                         value={selectedRole ?? undefined}
-                                        onValueChange={(v) => setSelectedRole(v as Role)}
+                                        onValueChange={(v) => setSelectedRole(v as InviteRole)}
                                         disabled={sending}
                                     >
                                         <SelectTrigger className="w-full">
                                             <SelectValue placeholder="Select role" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {ROLES.map((r) => (
-                                                <SelectItem key={r} value={r}>
-                                                    {r}
+                                            {roles.map((r) => (
+                                                <SelectItem key={r.id} value={r.key}>
+                                                    {r.displayName}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
                                     <p className="text-xs text-muted-foreground">
-                                        Admin invites cannot assign ADMIN role.
+                                        {selectedModule === "GRAPHICS" ? "Graphics users still need project access for specific projects." : "Admin invites cannot assign ADMIN role."}
                                     </p>
                                 </div>
 
@@ -308,12 +340,15 @@ export default function InviteUsersPage() {
                                                 ) : null}
                                             </div>
                                         </div>
-                                        <br/>
-                                        <Label>Select a Build to assign</Label>
+                                        {selectedModule === "WEBGL" && (
+                                            <>
+                                                <br/>
+                                                <Label>Select a Build to assign</Label>
+                                                <BuildSelect value={buildSel} onChange={setBuildSel} />
+                                            </>
+                                        )}
 
-                                        <BuildSelect value={buildSel} onChange={setBuildSel} />
-
-                                        <Button type="submit" disabled={!canSend || sending || !buildSel.projectId || !buildSel.envId || !buildSel.versionId}>
+                                        <Button type="submit" disabled={!canSend || sending || (selectedModule === "WEBGL" && (!buildSel.projectId || !buildSel.envId || !buildSel.versionId))}>
                                             {sending ? "Sending..." : "Send OTP Invites"}
                                         </Button>
 
@@ -418,7 +453,7 @@ export default function InviteUsersPage() {
                                                         {inv.name ? `${inv.name} - ${inv.email}` : inv.email}
                                                     </p>
                                                     <p className="text-xs text-muted-foreground">
-                                                        Status: {inv.status}
+                                                        Role - {inv.role ?? "VIEWER"} | Status - {inv.status}
                                                     </p>
                                                 </div>
                                                 <Badge variant="outline">{inv.status}</Badge>

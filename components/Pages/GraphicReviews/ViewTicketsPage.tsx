@@ -2,11 +2,15 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { apiFetch } from "@/components/lib/api";
+import { useAuth } from "@/components/auth/useAuth";
+import { getDomainRole } from "@/components/auth/domain";
 import {
     Select,
     SelectContent,
@@ -16,40 +20,108 @@ import {
 } from "@/components/ui/select";
 
 type Project = { id: number; name: string; slug: string };
-type Ticket = { id: number; projectId: number; title: string; description?: string; createdAt: string };
+type GraphicTicketStatus = "OPEN" | "IN_REVIEW" | "CHANGES_REQUESTED" | "APPROVED" | "CLOSED";
+type TicketAccess = { canView: boolean; accessScope: "ASSIGNED" | "ALL" | null };
+type Ticket = {
+    id: number;
+    title: string;
+    description?: string | null;
+    status?: GraphicTicketStatus;
+    createdAt: string;
+    graphicData?: { project?: Project };
+    currentUserTicketAccess?: TicketAccess;
+    _count?: { graphics: number };
+};
 
-const MOCK_PROJECTS: Project[] = [
-    { id: 1, name: "PG&E Substation", slug: "pge-substation" },
-    { id: 2, name: "Mosaic Viewer", slug: "mosaic-viewer" },
+const TICKET_STATUSES: Array<{ value: GraphicTicketStatus; label: string }> = [
+    { value: "OPEN", label: "Open" },
+    { value: "IN_REVIEW", label: "In review" },
+    { value: "CHANGES_REQUESTED", label: "Changes requested" },
+    { value: "APPROVED", label: "Approved" },
+    { value: "CLOSED", label: "Closed" },
 ];
 
-const MOCK_TICKETS: Ticket[] = [
-    { id: 101, projectId: 1, title: "Landing page graphics review", description: "Need contrast + alignment review.", createdAt: "2026-04-26" },
-    { id: 102, projectId: 1, title: "Icon set refresh", description: "Verify stroke thickness.", createdAt: "2026-04-20" },
-    { id: 201, projectId: 2, title: "Poster revisions", description: "Spacing + footer.", createdAt: "2026-04-22" },
-];
+function statusLabel(status: GraphicTicketStatus | undefined) {
+    return TICKET_STATUSES.find((item) => item.value === (status ?? "OPEN"))?.label ?? "Open";
+}
 
 export default function ViewTicketsPage() {
+    const { me } = useAuth();
+    const graphicsRole = me ? getDomainRole(me, "GRAPHICS") : null;
+    const canUpdateTicketStatus =
+        graphicsRole === "ADMIN" ||
+        graphicsRole === "MANAGER" ||
+        graphicsRole === "DESIGNER" ||
+        graphicsRole === "REVIEWER";
+
     const [projectId, setProjectId] = React.useState<string>("ALL");
+    const [projects, setProjects] = React.useState<Project[]>([]);
+    const [tickets, setTickets] = React.useState<Ticket[]>([]);
+    const [loading, setLoading] = React.useState(true);
+    const [updatingTicketId, setUpdatingTicketId] = React.useState<number | null>(null);
+
+    async function loadData() {
+        setLoading(true);
+        try {
+            const [projectsData, ticketsData] = await Promise.all([
+                apiFetch<Project[]>("/api/graphics/projects"),
+                apiFetch<Ticket[]>("/api/graphics/tickets"),
+            ]);
+            setProjects(Array.isArray(projectsData) ? projectsData : []);
+            setTickets(Array.isArray(ticketsData) ? ticketsData : []);
+        } catch (err: any) {
+            toast.error(err?.message ?? "Failed to load tickets");
+            setProjects([]);
+            setTickets([]);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    React.useEffect(() => {
+        loadData();
+    }, []);
 
     const projectById = React.useMemo(() => {
         const m = new Map<number, Project>();
-        MOCK_PROJECTS.forEach((p) => m.set(p.id, p));
+        projects.forEach((p) => m.set(p.id, p));
         return m;
-    }, []);
+    }, [projects]);
 
     const filtered = React.useMemo(() => {
-        if (projectId === "ALL") return MOCK_TICKETS;
+        if (projectId === "ALL") return tickets;
         const pid = Number(projectId);
-        return MOCK_TICKETS.filter((t) => t.projectId === pid);
-    }, [projectId]);
+        return tickets.filter((t) => t.graphicData?.project?.id === pid);
+    }, [projectId, tickets]);
+
+    async function updateTicketStatus(ticketId: number, status: GraphicTicketStatus) {
+        const current = tickets.find((ticket) => ticket.id === ticketId);
+        if (current?.status === status) return;
+
+        setUpdatingTicketId(ticketId);
+        try {
+            const updated = await apiFetch<Ticket>(`/api/graphics/tickets/${ticketId}`, {
+                method: "PATCH",
+                body: JSON.stringify({ status }),
+            });
+
+            setTickets((currentTickets) => currentTickets.map((ticket) => (
+                ticket.id === ticketId ? { ...ticket, status: updated.status ?? status } : ticket
+            )));
+            toast.success("Ticket status updated");
+        } catch (err: any) {
+            toast.error(err?.message ?? "Failed to update ticket status");
+        } finally {
+            setUpdatingTicketId(null);
+        }
+    }
 
     return (
         <div className="mx-auto w-full max-w-6xl space-y-6">
             <div>
                 <h1 className="text-2xl font-semibold">Tickets</h1>
                 <p className="text-sm text-muted-foreground">
-                    Mock page: view all tickets + filter by project.
+                    View tickets from graphics projects you can access.
                 </p>
             </div>
 
@@ -62,7 +134,7 @@ export default function ViewTicketsPage() {
                         </SelectTrigger>
                         <SelectContent className="w-[var(--radix-select-trigger-width)]">
                             <SelectItem value="ALL">All projects</SelectItem>
-                            {MOCK_PROJECTS.map((p) => (
+                            {projects.map((p) => (
                                 <SelectItem key={p.id} value={String(p.id)}>
                                     {p.name}
                                 </SelectItem>
@@ -75,24 +147,61 @@ export default function ViewTicketsPage() {
                     </Button>
                 </div>
 
-                <Badge variant="secondary">{filtered.length} ticket(s)</Badge>
+                <div className="flex items-center gap-2">
+                    <Badge variant="secondary">{filtered.length} ticket(s)</Badge>
+                    <Button variant="outline" size="sm" onClick={loadData} disabled={loading}>
+                        Refresh
+                    </Button>
+                </div>
             </div>
 
-            <Separator />
-
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {filtered.map((t) => {
-                    const p = projectById.get(t.projectId);
+                {loading ? (
+                    <p className="text-sm text-muted-foreground">Loading tickets...</p>
+                ) : filtered.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No tickets found.</p>
+                ) : filtered.map((t) => {
+                    const p = t.graphicData?.project ? projectById.get(t.graphicData.project.id) ?? t.graphicData.project : null;
+                    const canUpdateStatus = canUpdateTicketStatus && t.currentUserTicketAccess?.canView !== false;
                     return (
                         <Card key={t.id} className="hover:shadow-md transition">
                             <CardHeader className="space-y-2">
-                                <CardTitle className="text-base">{t.title}</CardTitle>
-                                <CardDescription className="truncate">
-                                    {p?.name || "Unknown project"} • {t.createdAt}
-                                </CardDescription>
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0 space-y-1">
+                                        <CardTitle className="truncate text-base">{t.title}</CardTitle>
+                                        <CardDescription className="truncate">
+                                            {p?.name || "Unknown project"} • {new Date(t.createdAt).toLocaleDateString()}
+                                        </CardDescription>
+                                    </div>
+                                    {canUpdateStatus ? (
+                                        <Select
+                                            value={t.status ?? "OPEN"}
+                                            onValueChange={(value) => updateTicketStatus(t.id, value as GraphicTicketStatus)}
+                                            disabled={updatingTicketId === t.id}
+                                        >
+                                            <SelectTrigger className="h-8 w-[150px] shrink-0">
+                                                <SelectValue placeholder="Status" />
+                                            </SelectTrigger>
+                                            <SelectContent className="w-[var(--radix-select-trigger-width)]">
+                                                {TICKET_STATUSES.map((status) => (
+                                                    <SelectItem key={status.value} value={status.value}>
+                                                        {status.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    ) : (
+                                        <Badge variant="outline" className="shrink-0">
+                                            {statusLabel(t.status)}
+                                        </Badge>
+                                    )}
+                                </div>
                             </CardHeader>
                             <CardContent className="space-y-3">
                                 {t.description && <p className="text-sm text-muted-foreground">{t.description}</p>}
+                                <div className="flex items-center gap-2">
+                                    <Badge variant="secondary">{t._count?.graphics ?? 0} graphic(s)</Badge>
+                                </div>
                                 <Button asChild className="w-full">
                                     <Link href={`/tickets/${t.id}`}>Open ticket</Link>
                                 </Button>

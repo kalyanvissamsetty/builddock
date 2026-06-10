@@ -1,4 +1,4 @@
-import { Role } from "@/types";
+import { AccessRole } from "@/types";
 
 export type RouteKey =
     | "vieweraccess"
@@ -12,8 +12,13 @@ export type RouteKey =
     | "promoteusers"
     | "mybuilds"
     | "viewallbuilds"
+    | "graphicprojects"
+    | "graphicprojectaccess"
+    | "createticket"
+    | "viewtickets"
+    | "profileselection"
 
-export const ROUTE_POLICY: Record<RouteKey, Role[]> = {
+export const ROUTE_POLICY: Record<RouteKey, AccessRole[]> = {
     vieweraccess: ["ADMIN", "MANAGER"],
     uploadbuild: ["ADMIN", "DEV"],
     deletebuild: ["ADMIN","DEV"],
@@ -24,9 +29,14 @@ export const ROUTE_POLICY: Record<RouteKey, Role[]> = {
     addusers: ["ADMIN", "MANAGER"],
     promoteusers: ["ADMIN", "MANAGER"],
     mybuilds: ["VIEWER"],
-    viewallbuilds: ["ADMIN", "DEV", "MANAGER"]
+    viewallbuilds: ["ADMIN", "DEV", "MANAGER"],
+    graphicprojects: ["ADMIN", "MANAGER"],
+    graphicprojectaccess: ["ADMIN", "MANAGER"],
+    createticket: ["ADMIN", "MANAGER"],
+    viewtickets: ["ADMIN", "MANAGER", "DESIGNER", "REVIEWER"],
+    profileselection: ["ADMIN", "MANAGER", "DEV", "VIEWER", "DESIGNER", "REVIEWER"],
 };
 
-export function canAccess(role: Role, allowed: Role[]) {
+export function canAccess(role: AccessRole, allowed: AccessRole[]) {
     return allowed.includes(role);
 }

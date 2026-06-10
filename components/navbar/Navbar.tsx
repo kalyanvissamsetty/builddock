@@ -7,6 +7,7 @@ import { Me } from "@/types";
 import { useAuth } from "../auth/useAuth";
 import { User } from "lucide-react";
 import { getLogoFromWindowOrigin } from "../Helpers/TenantRules";
+import { DomainSwitcher } from "./DomainSwitcher";
 type Props = {
   me: Me;
 };
@@ -41,6 +42,7 @@ export function Navbar({ me }: Props) {
 
         {me.id && (
           <div className="flex items-center gap-3">
+            <DomainSwitcher me={me} className="w-[220px]" />
             {/* <Button
               variant="outline"
               onClick={() => router.push("/profile")}

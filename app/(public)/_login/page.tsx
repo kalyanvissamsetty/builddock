@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { apiFetch, ApiError } from "../../../components/lib/api";
 import Image from "next/image";
 import { Eye, EyeOff } from "lucide-react";
-import { defaultRouteForRole } from "@/components/auth/defaultRoute";
+import { getEntryRouteForUser } from "@/components/auth/defaultRoute";
 import { useAuth } from "@/components/auth/useAuth";
 import { getLogoFromWindowOrigin } from "@/components/Helpers/TenantRules";
 import { sanitizePasswordInput } from "@/components/Helpers/PasswordRules";
@@ -37,7 +37,7 @@ function LoginForm() {
       });
       const user = await refreshMe();
       localStorage.setItem("bd_has_session", "1");
-      if (user) router.replace(defaultRouteForRole(user.role));
+      if (user) router.replace(getEntryRouteForUser(user));
     } catch (e: any) {
       if (e instanceof ApiError && (e.code === "EMAIL_NOT_VERIFIED" || e.code === "INVITED_NO_PASSWORD") && e.redirectTo) {
         router.replace(e.redirectTo);

@@ -11,7 +11,7 @@ import { Clipboard } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { defaultRouteForRole } from "@/components/auth/defaultRoute";
+import { getEntryRouteForUser } from "@/components/auth/defaultRoute";
 import { Me } from "@/types";
 import { useAuth } from "@/components/auth/useAuth";
 import { getAppName, getLogoFromWindowOrigin } from "@/components/Helpers/TenantRules";
@@ -174,7 +174,7 @@ function VerifyOtpForm() {
       setTimeout(async () => {
         const user = await refreshMe();
         localStorage.setItem("bd_has_session", "1");
-        if (user) router.replace(defaultRouteForRole(user.role));
+        if (user) router.replace(getEntryRouteForUser(user));
       }, 900);
     } catch (e: any) {
       setError(e.message || "Verification failed");

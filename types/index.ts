@@ -5,12 +5,21 @@ export interface Project {
   createdAt: string;
 }
 export type Role = "ADMIN" | "MANAGER" | "DEV" | "VIEWER";
+export type ReviewDomain = "WEBGL" | "GRAPHICS";
+export type AccessRole = Role | "DESIGNER" | "REVIEWER";
 
 export type Me = {
   id: number;
   email: string;
-  name: string;
-  role: Role;
+  name: string | null;
+  role?: Role;
+  moduleAccess?: {
+    module: ReviewDomain;
+    role: {
+      key: AccessRole;
+      displayName: string;
+    };
+  }[];
 };
 
 export interface Environment {

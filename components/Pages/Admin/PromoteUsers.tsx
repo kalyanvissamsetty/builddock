@@ -13,8 +13,10 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Role } from "@/types";
+import { ReviewDomain } from "@/types";
 import { toast } from "sonner";
+import { useAuth } from "@/components/auth/useAuth";
+import { DOMAIN_LABELS, useSelectedDomain } from "@/components/auth/domain";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,10 +31,17 @@ import {
 type User = {
   id: number;
   email: string;
-  role: Role | string;
+  role: string;
+  module?: ReviewDomain;
 };
 
-const ROLES: Role[] = ["VIEWER", "MANAGER", "DEV"];
+type RoleOption = {
+  id: number;
+  key: string;
+  displayName: string;
+  module: ReviewDomain;
+};
+
 const PAGE_SIZES = [5, 10, 20] as const;
 const DELETE_CONFIRMATION_SESSION_KEY = "skip-user-delete-confirmation";
 
@@ -45,8 +54,11 @@ function clamp(n: number, min: number, max: number) {
 }
 
 export default function PromoteUsersPage() {
+  const { me } = useAuth();
+  const { selectedDomain } = useSelectedDomain(me);
   const [users, setUsers] = useState<User[]>([]);
-  const [editedRoles, setEditedRoles] = useState<Record<number, Role>>({});
+  const [roles, setRoles] = useState<RoleOption[]>([]);
+  const [editedRoles, setEditedRoles] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState<number | null>(null);
 
@@ -74,18 +86,29 @@ export default function PromoteUsersPage() {
 
   const [isPending, startTransition] = useTransition();
 
+  async function loadRoles() {
+    const data = await apiFetch<RoleOption[]>(`/api/admin/roles?module=${selectedDomain}`);
+    setRoles(Array.isArray(data) ? data : []);
+  }
+
   async function loadUsers() {
-    const data = await apiFetch<User[]>("/api/admin/users");
-    const nonAdminUsers = data.filter((u) => u.role !== "ADMIN");
+    const data = await apiFetch<User[]>(`/api/admin/users?module=${selectedDomain}`);
+    const nonAdminUsers = data.filter((u) => u.role !== "ADMIN" && u.id !== me?.id);
     nonAdminUsers.sort((a, b) => a.email.localeCompare(b.email));
     setUsers(nonAdminUsers);
   }
 
   useEffect(() => {
+    setUsers([]);
+    setRoles([]);
+    setEditedRoles({});
+    setPage(1);
+    loadRoles();
     loadUsers();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDomain]);
 
-  function onRoleChange(userId: number, role: Role) {
+  function onRoleChange(userId: number, role: string) {
     setEditedRoles((prev) => ({
       ...prev,
       [userId]: role,
@@ -96,7 +119,7 @@ export default function PromoteUsersPage() {
     try {
       setDeletingUserId(user.id);
 
-      await apiFetch(`/api/admin/users/${user.id}`, {
+      await apiFetch(`/api/admin/users/${user.id}?module=${selectedDomain}`, {
         method: "DELETE",
       });
 
@@ -108,7 +131,7 @@ export default function PromoteUsersPage() {
         return next;
       });
 
-      toast.success(`User deleted: ${user.email}`);
+      toast.success(selectedDomain === "GRAPHICS" ? `Graphics access removed: ${user.email}` : `User deleted: ${user.email}`);
     } catch (error) {
       console.error("Failed to delete user", error);
       toast.error("Failed to delete user");
@@ -121,6 +144,8 @@ export default function PromoteUsersPage() {
   }
 
   function handleDeleteClick(user: User) {
+    if (user.id === me?.id) return;
+
     if (skipDeleteConfirm) {
       deleteUser(user, { skippedConfirmation: true });
       return;
@@ -173,7 +198,7 @@ export default function PromoteUsersPage() {
   async function saveChanges() {
     setLoading(true);
 
-    const changes: Array<{ userId: number; role: Role }> = [];
+    const changes: Array<{ userId: number; role: string }> = [];
     for (const [userIdStr, role] of Object.entries(editedRoles)) {
       const userId = Number(userIdStr);
       const current = users.find((u) => u.id === userId);
@@ -187,7 +212,7 @@ export default function PromoteUsersPage() {
       for (const c of changes) {
         await apiFetch(`/api/admin/users/${c.userId}/role`, {
           method: "PATCH",
-          body: JSON.stringify({ role: c.role }),
+          body: JSON.stringify({ role: c.role, module: selectedDomain }),
         });
       }
 
@@ -220,8 +245,8 @@ export default function PromoteUsersPage() {
               <h1 className="text-2xl font-semibold">User Role Management</h1>
               <p className="text-sm text-muted-foreground">
                 {totalItems === 0
-                  ? "No users found."
-                  : `Showing ${pageStart}–${pageEnd} of ${totalItems}`}
+                  ? `No ${DOMAIN_LABELS[selectedDomain]} users found.`
+                  : `Showing ${pageStart}–${pageEnd} of ${totalItems} ${DOMAIN_LABELS[selectedDomain]} user(s)`}
               </p>
             </div>
 
@@ -293,16 +318,16 @@ export default function PromoteUsersPage() {
                       <Select
                         disabled={isAdmin || isDeleting}
                         value={(pendingRole ?? u.role) as string}
-                        onValueChange={(role) => onRoleChange(u.id, role as Role)}
+                        onValueChange={(role) => onRoleChange(u.id, role)}
                       >
                         <SelectTrigger className="w-40">
                           <SelectValue />
                         </SelectTrigger>
 
                         <SelectContent>
-                          {ROLES.map((r) => (
-                            <SelectItem key={r} value={r}>
-                              {r}
+                          {roles.map((r) => (
+                            <SelectItem key={r.id} value={r.key}>
+                              {r.displayName}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -314,7 +339,7 @@ export default function PromoteUsersPage() {
                         onClick={() => handleDeleteClick(u)}
                         disabled={isDeleting || loading}
                       >
-                        {isDeleting ? "Deleting..." : "Delete"}
+                        {isDeleting ? (selectedDomain === "GRAPHICS" ? "Removing..." : "Deleting...") : (selectedDomain === "GRAPHICS" ? "Remove" : "Delete")}
                       </Button>
                     </div>
                   </div>
@@ -384,18 +409,18 @@ export default function PromoteUsersPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete user?</AlertDialogTitle>
+            <AlertDialogTitle>{selectedDomain === "GRAPHICS" ? "Remove graphics access?" : "Delete user?"}</AlertDialogTitle>
             <AlertDialogDescription>
               {selectedUserForDelete ? (
                 <>
-                  Are you sure you want to delete{" "}
+                  Are you sure you want to {selectedDomain === "GRAPHICS" ? "remove graphics access for" : "delete"}{" "}
                   <span className="font-medium text-foreground">
                     {selectedUserForDelete.email}
                   </span>
-                  ? This action cannot be undone.
+                  ? {selectedDomain === "GRAPHICS" ? "They will remain in other domains they can access." : "This action cannot be undone."}
                 </>
               ) : (
-                "Are you sure you want to delete this user?"
+                selectedDomain === "GRAPHICS" ? "Are you sure you want to remove graphics access for this user?" : "Are you sure you want to delete this user?"
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -434,7 +459,7 @@ export default function PromoteUsersPage() {
               disabled={!!deletingUserId}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deletingUserId ? "Deleting..." : "Delete"}
+              {deletingUserId ? (selectedDomain === "GRAPHICS" ? "Removing..." : "Deleting...") : (selectedDomain === "GRAPHICS" ? "Remove" : "Delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

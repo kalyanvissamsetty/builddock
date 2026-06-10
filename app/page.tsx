@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/useAuth";
-import { defaultRouteForRole } from "@/components/auth/defaultRoute";
+import { getEntryRouteForUser } from "@/components/auth/defaultRoute";
 
 export default function Page() {
   const { me, loading } = useAuth();
@@ -17,7 +17,7 @@ export default function Page() {
       return;
     }
 
-    router.replace(defaultRouteForRole(me.role));
+    router.replace(getEntryRouteForUser(me));
   }, [loading, me, router]);
 
   return null;

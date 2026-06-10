@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronRight, User } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -9,9 +9,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { NAV_ITEMS } from "./navbar/navConfig";
 import { Button } from "./ui/button";
 import { Me } from "@/types";
-import { canAccessPath } from "./auth/access";
+import { canAccessPathForMe, domainForPath } from "./auth/access";
 import { useAuth } from "./auth/useAuth";
 import { getLogoFromWindowOrigin } from "./Helpers/TenantRules";
+import { useSelectedDomain } from "./auth/domain";
+import { DomainSwitcher } from "./navbar/DomainSwitcher";
 type Props = {
     me: Me;
 };
@@ -21,10 +23,18 @@ export function AppSidebar({ me }: Props) {
     const router = useRouter();
     const { logout } = useAuth()
     const [openMenu, setOpenMenu] = useState<string | null>(null);
+    const { selectedDomain } = useSelectedDomain(me);
+
+    useEffect(() => {
+        if (selectedDomain === "GRAPHICS") setOpenMenu("Graphics");
+    }, [selectedDomain]);
 
     const visibleItems = NAV_ITEMS.filter((item) => {
         if (!item.href) return true;
-        return canAccessPath(me.role, item.href);
+        if (item.domain && item.domain !== "ALL" && item.domain !== selectedDomain) return false;
+        const itemDomain = domainForPath(item.href);
+        if (itemDomain && itemDomain !== "SHARED" && itemDomain !== selectedDomain) return false;
+        return canAccessPathForMe(me, item.href, selectedDomain);
     });
 
     async function handleLogout() {
@@ -38,7 +48,7 @@ export function AppSidebar({ me }: Props) {
     }
 
     return (
-        <aside className="h-full bg-background flex flex-col border-r">
+        <aside className="h-full min-h-0 bg-background flex flex-col border-r">
             {/* Logo */}
             <div className="px-4 py-2 border-b">
                 <Link href="/" className="inline-flex items-center">
@@ -54,14 +64,17 @@ export function AppSidebar({ me }: Props) {
             </div>
 
             {/* Navigation */}
-            <nav className="flex-1 px-4 py-6 space-y-1">
+            <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-4 py-6">
                 {visibleItems.map((item) => {
                     // ---------- DROPDOWN ITEM ----------
                     if (item.children) {
                         // Filter children by role
                         const visibleChildren = item.children.filter((child) => {
                             if (!child.href) return true;
-                            return canAccessPath(me.role, child.href);
+                            if (child.domain && child.domain !== "ALL" && child.domain !== selectedDomain) return false;
+                            const childDomain = domainForPath(child.href);
+                            if (childDomain && childDomain !== "SHARED" && childDomain !== selectedDomain) return false;
+                            return canAccessPathForMe(me, child.href, selectedDomain);
                         });
 
                         // If no children are visible, hide the entire parent
@@ -71,7 +84,7 @@ export function AppSidebar({ me }: Props) {
 
                         const isOpen = openMenu === item.label;
                         const isChildActive = visibleChildren.some(
-                            (child) => child.href === pathname
+                            (child) => child.href.split("?")[0].split("#")[0] === pathname
                         );
 
                         return (
@@ -96,7 +109,7 @@ export function AppSidebar({ me }: Props) {
                                 {isOpen && (
                                     <div className="mt-1 ml-4 space-y-1">
                                         {visibleChildren.map((child) => {
-                                            const isActive = pathname === child.href;
+                                            const isActive = pathname === child.href.split("?")[0].split("#")[0];
 
                                             return (
                                                 <Link
@@ -141,6 +154,7 @@ export function AppSidebar({ me }: Props) {
 
             {/* Footer */}
             <div className="px-4 py-4 border-t space-y-3">
+                <DomainSwitcher me={me} />
                 {/* <Button variant="outline" className="w-full" onClick={() => router.push("/profile")}>
                     <User className="mr-2 h-4 w-4" />
                     View Profile

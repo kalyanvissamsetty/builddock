@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/useAuth";
-import { defaultRouteForRole } from "@/components/auth/defaultRoute";
+import { getEntryRouteForUser } from "@/components/auth/defaultRoute";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 
 const PUBLIC_PAGES = ["/login", "/signup", "/verifyotp", "/otplogin", "/logout"];
@@ -25,7 +25,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
     if (pathname === "/logout") return;
 
     if (PUBLIC_PAGES.includes(pathname)) {
-      router.replace(defaultRouteForRole(me.role));
+      router.replace(getEntryRouteForUser(me));
     }
   }, [loading, isLoggingOut, me, pathname, router, isVerifyOtpInvite]);
 

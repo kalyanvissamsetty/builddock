@@ -84,3 +84,87 @@ export function getApiBase() {
 
   return API_BASE;
 }
+
+type UploadWithProgressOptions = {
+  method?: "POST" | "PUT" | "PATCH";
+  onProgress?: (progress: { loaded: number; total: number; percent: number }) => void;
+};
+
+function parseJsonResponse<T>(xhr: XMLHttpRequest): T {
+  if (!xhr.responseText) return undefined as T;
+
+  return JSON.parse(xhr.responseText) as T;
+}
+
+function uploadFormDataOnce<T>(
+  path: string,
+  body: FormData,
+  options: UploadWithProgressOptions,
+): Promise<T> {
+  const apiBase = getApiBase() ?? "";
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open(options.method ?? "POST", `${apiBase}${path}`);
+    xhr.withCredentials = true;
+
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable) return;
+
+      options.onProgress?.({
+        loaded: event.loaded,
+        total: event.total,
+        percent: Math.round((event.loaded / event.total) * 100),
+      });
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(parseJsonResponse<T>(xhr));
+        } catch {
+          reject(new ApiError("Invalid server response", xhr.status));
+        }
+        return;
+      }
+
+      let data: any = null;
+      try {
+        data = JSON.parse(xhr.responseText);
+      } catch {
+        // ignore non-json errors
+      }
+
+      reject(new ApiError(data?.message || `Request failed: ${xhr.status}`, xhr.status, data));
+    };
+
+    xhr.onerror = () => reject(new ApiError("Network error while uploading", xhr.status || 0));
+    xhr.onabort = () => reject(new ApiError("Upload was cancelled", xhr.status || 0));
+    xhr.send(body);
+  });
+}
+
+export async function uploadFormDataWithProgress<T>(
+  path: string,
+  body: FormData,
+  options: UploadWithProgressOptions = {},
+): Promise<T> {
+  try {
+    return await uploadFormDataOnce<T>(path, body, options);
+  } catch (error) {
+    if (!(error instanceof ApiError) || error.status !== 401 || path === "/api/auth/refresh") {
+      throw error;
+    }
+
+    const apiBase = getApiBase() ?? "";
+    const refreshRes = await fetch(`${apiBase}/api/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+      cache: "no-store",
+    });
+
+    if (!refreshRes.ok) throw error;
+
+    return uploadFormDataOnce<T>(path, body, options);
+  }
+}

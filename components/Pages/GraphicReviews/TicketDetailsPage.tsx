@@ -2,9 +2,13 @@
 
 import * as React from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
-import { Download, UploadCloud } from "lucide-react";
+import { ArrowLeft, Download, UploadCloud } from "lucide-react";
+import { apiFetch, getApiBase, uploadFormDataWithProgress } from "@/components/lib/api";
+import { useAuth } from "@/components/auth/useAuth";
+import { getDomainRole } from "@/components/auth/domain";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +17,7 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
     Dialog,
+    DialogClose,
     DialogContent,
     DialogFooter,
     DialogHeader,
@@ -38,45 +43,127 @@ type Comment = {
     version: string;
 };
 
-type GraphicVersion = { version: string; imageUrl: string; uploadedAt: string; uploadedBy: string };
-type TicketGraphic = { id: number; fileName: string; title: string; description: string; versions: GraphicVersion[]; comments: Comment[] };
-
-type Ticket = { id: number; projectName: string; title: string; description?: string; graphics: TicketGraphic[] };
-
-// Mock ticket data keyed by ticketId
-const MOCK_TICKETS_BY_ID: Record<string, Ticket> = {
-    "101": {
-        id: 101,
-        projectName: "PG&E Substation",
-        title: "Landing page graphics review",
-        description: "Need contrast + alignment review.",
-        graphics: [
-            {
-                id: 1,
-                fileName: "banner.png",
-                title: "Homepage Banner",
-                description: "Hero image for landing page.",
-                versions: [
-                    { version: "v1", imageUrl: "https://picsum.photos/seed/t101-b1/1200/800", uploadedAt: "2026-04-20", uploadedBy: "qa@tims.group" },
-                    { version: "v2", imageUrl: "https://picsum.photos/seed/t101-b2/900/1200", uploadedAt: "2026-04-22", uploadedBy: "dev@tims.group" },
-                ],
-                comments: [
-                    { id: 11, text: "Increase contrast for the headline.", createdAt: "2026-04-21", author: "QA Team", version: "v1" },
-                ],
-            },
-            {
-                id: 2,
-                fileName: "poster.jpg",
-                title: "Safety Poster",
-                description: "Poster for training module.",
-                versions: [
-                    { version: "v1", imageUrl: "https://picsum.photos/seed/t101-p1/1000/600", uploadedAt: "2026-04-20", uploadedBy: "dev@tims.group" },
-                ],
-                comments: [],
-            },
-        ],
-    },
+type ApiUser = { id: number; name?: string | null; email: string };
+type ApiComment = {
+    id: number;
+    text: string;
+    createdAt: string;
+    authorName?: string | null;
+    authorEmail?: string | null;
+    author?: ApiUser | null;
 };
+type GraphicVersion = {
+    id: number;
+    version: string;
+    imageUrl: string;
+    originalFileName?: string | null;
+    uploadedAt: string;
+    uploadedBy?: ApiUser | null;
+    comments?: ApiComment[];
+};
+type TicketGraphic = { id: number; fileName: string; title: string; description?: string | null; versions: GraphicVersion[] };
+type GraphicTicketStatus = "OPEN" | "IN_REVIEW" | "CHANGES_REQUESTED" | "APPROVED" | "CLOSED";
+type TicketAccess = { canView: boolean; accessScope: "ASSIGNED" | "ALL" | null };
+
+type Ticket = {
+    id: number;
+    title: string;
+    description?: string | null;
+    status?: GraphicTicketStatus;
+    currentUserTicketAccess?: TicketAccess;
+    graphicData?: { project?: { id: number; name: string; slug: string } };
+    graphics: TicketGraphic[];
+};
+
+const TICKET_STATUSES: Array<{ value: GraphicTicketStatus; label: string }> = [
+    { value: "OPEN", label: "Open" },
+    { value: "IN_REVIEW", label: "In review" },
+    { value: "CHANGES_REQUESTED", label: "Changes requested" },
+    { value: "APPROVED", label: "Approved" },
+    { value: "CLOSED", label: "Closed" },
+];
+
+function statusLabel(status: GraphicTicketStatus | undefined) {
+    return TICKET_STATUSES.find((item) => item.value === (status ?? "OPEN"))?.label ?? "Open";
+}
+
+function fileNameFromDisposition(value: string | null) {
+    if (!value) return null;
+
+    const encoded = value.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+    if (encoded) {
+        try {
+            return decodeURIComponent(encoded);
+        } catch {
+            return encoded;
+        }
+    }
+
+    return value.match(/filename="([^"]+)"/i)?.[1] ?? null;
+}
+
+async function fetchDownloadResponse(path: string) {
+    const apiBase = getApiBase();
+    const url = `${apiBase}${path}`;
+
+    let response = await fetch(url, {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+    });
+
+    if (response.status === 401) {
+        const refreshResponse = await fetch(`${apiBase}/api/auth/refresh`, {
+            method: "POST",
+            credentials: "include",
+            cache: "no-store",
+        });
+
+        if (refreshResponse.ok) {
+            response = await fetch(url, {
+                method: "GET",
+                credentials: "include",
+                cache: "no-store",
+            });
+        }
+    }
+
+    return response;
+}
+
+type GraphicUploadProgress = {
+    percent: number;
+    status: "idle" | "uploading" | "processing" | "completed" | "error";
+    message?: string;
+};
+
+function connectGraphicUploadProgress(
+    uploadId: string,
+    onEvent: (event: { type: string; message?: string; overallPercent?: number }) => void,
+) {
+    const apiBase = getApiBase() ?? "";
+    const eventSource = new EventSource(`${apiBase}/api/graphics/upload/progress/${uploadId}`, {
+        withCredentials: true,
+    });
+
+    eventSource.onmessage = (event) => {
+        try {
+            const data = JSON.parse(event.data) as { type: string; message?: string; overallPercent?: number };
+            onEvent(data);
+            if (data.type === "completed" || data.type === "error") {
+                eventSource.close();
+            }
+        } catch {
+            // Ignore malformed progress events without interrupting the upload.
+        }
+    };
+
+    eventSource.onerror = () => {
+        eventSource.close();
+    };
+
+    return eventSource;
+}
 
 function CommentsDialog({ comments }: { comments: Comment[] }) {
     const [sort, setSort] = React.useState<"NEWEST" | "OLDEST">("NEWEST");
@@ -104,7 +191,7 @@ function CommentsDialog({ comments }: { comments: Comment[] }) {
             <DialogContent className="sm:max-w-3xl">
                 <DialogHeader>
                     <DialogTitle>Comments</DialogTitle>
-                    <DialogDescription>Mock comments for this ticket image.</DialogDescription>
+                    <DialogDescription>Comments for this ticket image.</DialogDescription>
                 </DialogHeader>
 
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -156,44 +243,55 @@ function CommentsDialog({ comments }: { comments: Comment[] }) {
                 </ScrollArea>
 
                 <DialogFooter>
-                    <Button variant="outline">Close</Button>
+                    <DialogClose asChild>
+                        <Button variant="outline">Close</Button>
+                    </DialogClose>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
     );
 }
 
-function AddCommentDialog({ onAdd }: { onAdd: (text: string) => void }) {
+function AddCommentDialog({ onAdd }: { onAdd: (text: string) => Promise<void> }) {
     const [open, setOpen] = React.useState(false);
     const [text, setText] = React.useState("");
+    const [submitting, setSubmitting] = React.useState(false);
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
+                <Button type="button" variant="outline" size="sm">
                     Add comment
                 </Button>
             </DialogTrigger>
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Add comment</DialogTitle>
-                    <DialogDescription>Mock comment dialog.</DialogDescription>
+                    
                 </DialogHeader>
                 <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={5} placeholder="Write comment..." />
                 <DialogFooter>
                     <Button
-                        onClick={() => {
+                        type="button"
+                        disabled={submitting}
+                        onClick={async () => {
                             const t = text.trim();
                             if (!t) return;
-                            onAdd(t);
-                            setText("");
-                            setOpen(false);
-                            toast.success("Comment added (mock)");
+                            setSubmitting(true);
+                            try {
+                                await onAdd(t);
+                                setText("");
+                                setOpen(false);
+                            } catch (err: any) {
+                                toast.error(err?.message ?? "Failed to add comment");
+                            } finally {
+                                setSubmitting(false);
+                            }
                         }}
                     >
-                        Submit
+                        {submitting ? "Submitting..." : "Submit"}
                     </Button>
-                    <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+                    <Button type="button" variant="outline" disabled={submitting} onClick={() => setOpen(false)}>Cancel</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -206,13 +304,18 @@ function UploadNewVersionDialog({
     onUploadNewGraphic,
 }: {
     ticket: Ticket;
-    onUploadNewVersion: (fileName: string, file: File) => void;
-    onUploadNewGraphic: (file: File) => void;
+    onUploadNewVersion: (fileName: string, file: File, uploadId: string, onClientProgress: (percent: number) => void) => Promise<void>;
+    onUploadNewGraphic: (file: File, uploadId: string, onClientProgress: (percent: number) => void) => Promise<void>;
 }) {
     const [open, setOpen] = React.useState(false);
     const [mode, setMode] = React.useState<"EXISTING" | "NEW">("EXISTING");
     const [selectedFileName, setSelectedFileName] = React.useState<string>("");
     const [file, setFile] = React.useState<File | null>(null);
+    const [uploading, setUploading] = React.useState(false);
+    const [progress, setProgress] = React.useState<GraphicUploadProgress>({
+        percent: 0,
+        status: "idle",
+    });
 
     const fileNames = React.useMemo(() => ticket.graphics.map((g) => g.fileName), [ticket.graphics]);
 
@@ -220,6 +323,8 @@ function UploadNewVersionDialog({
         setMode("EXISTING");
         setSelectedFileName("");
         setFile(null);
+        setUploading(false);
+        setProgress({ percent: 0, status: "idle" });
     }
 
     return (
@@ -237,7 +342,7 @@ function UploadNewVersionDialog({
                 </Button>
             </DialogTrigger>
 
-            <DialogContent>
+            <DialogContent className="max-h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] max-w-none overflow-y-auto sm:w-[42rem]">
                 <DialogHeader>
                     <DialogTitle>Upload to ticket</DialogTitle>
                     <DialogDescription>
@@ -250,6 +355,7 @@ function UploadNewVersionDialog({
                         <Button
                             type="button"
                             variant={mode === "EXISTING" ? "default" : "outline"}
+                            disabled={uploading}
                             onClick={() => setMode("EXISTING")}
                         >
                             New version
@@ -257,6 +363,7 @@ function UploadNewVersionDialog({
                         <Button
                             type="button"
                             variant={mode === "NEW" ? "default" : "outline"}
+                            disabled={uploading}
                             onClick={() => setMode("NEW")}
                         >
                             New graphic
@@ -267,13 +374,13 @@ function UploadNewVersionDialog({
                         <div className="space-y-2">
                             <p className="text-sm font-medium">Choose existing file</p>
                             <Select value={selectedFileName} onValueChange={setSelectedFileName}>
-                                <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="Select file name" />
+                                <SelectTrigger className="w-full" disabled={uploading}>
+                                    <SelectValue placeholder="Select file name" className="truncate" />
                                 </SelectTrigger>
                                 <SelectContent className="w-[var(--radix-select-trigger-width)]">
                                     {fileNames.map((f) => (
-                                        <SelectItem key={f} value={f}>
-                                            {f}
+                                        <SelectItem key={f} value={f} className="max-w-full">
+                                            <span className="block truncate">{f}</span>
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -330,8 +437,8 @@ function UploadNewVersionDialog({
                                 />
 
                                 {!file ? (
-                                    <div className="flex items-center justify-between gap-3 rounded-md bg-muted/30 p-4">
-                                        <div className="space-y-1">
+                                    <div className="flex flex-col gap-3 rounded-md bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between">
+                                        <div className="min-w-0 space-y-1">
                                             <p className="text-sm font-medium">Drag & drop your image</p>
                                             <p className="text-xs text-muted-foreground">
                                                 PNG / JPG / WEBP supported
@@ -341,25 +448,29 @@ function UploadNewVersionDialog({
                                         <Button
                                             type="button"
                                             variant="outline"
+                                            disabled={uploading}
                                             onClick={() => document.getElementById("ticket-upload-input")?.click()}
                                         >
                                             Choose file
                                         </Button>
                                     </div>
                                 ) : (
-                                    <div className="flex items-start justify-between gap-3 rounded-md border bg-background p-3">
-                                        <div className="min-w-0">
-                                            <p className="text-sm font-medium truncate">{file.name}</p>
+                                    <div className="flex min-w-0 flex-col gap-3 rounded-md border bg-background p-3 sm:flex-row sm:items-start sm:justify-between">
+                                        <div className="min-w-0 flex-1 space-y-1">
+                                            <p className="break-words text-sm font-medium sm:truncate" title={file.name}>
+                                                {file.name}
+                                            </p>
                                             <p className="text-xs text-muted-foreground">
                                                 {Math.round(file.size / 1024)} KB • {file.type}
                                             </p>
                                         </div>
 
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex shrink-0 items-center gap-2 self-start">
                                             <Button
                                                 type="button"
                                                 variant="outline"
                                                 size="sm"
+                                                disabled={uploading}
                                                 onClick={() => document.getElementById("ticket-upload-input")?.click()}
                                             >
                                                 Replace
@@ -368,6 +479,7 @@ function UploadNewVersionDialog({
                                                 type="button"
                                                 variant="ghost"
                                                 size="sm"
+                                                disabled={uploading}
                                                 onClick={() => setFile(null)}
                                             >
                                                 Remove
@@ -381,6 +493,35 @@ function UploadNewVersionDialog({
                                         ? "This will be saved as the next version for the selected file."
                                         : "This will be added as a new graphic (v1) in this ticket."}
                                 </p>
+
+                                {(uploading || progress.status !== "idle") && (
+                                    <div className="space-y-2 rounded-md bg-muted/30 p-3">
+                                        <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                                            <span className="truncate">
+                                                {progress.status === "uploading"
+                                                    ? "Uploading"
+                                                    : progress.status === "processing"
+                                                        ? "Saving"
+                                                        : progress.status === "completed"
+                                                            ? "Completed"
+                                                            : progress.status === "error"
+                                                                ? "Failed"
+                                                                : "Waiting"}
+                                                {progress.message ? ` - ${progress.message}` : ""}
+                                            </span>
+                                            <span className="shrink-0">{progress.percent}%</span>
+                                        </div>
+                                        <div className="h-2 w-full overflow-hidden rounded-full bg-border">
+                                            <div
+                                                className={[
+                                                    "h-full rounded-full transition-all duration-300",
+                                                    progress.status === "error" ? "bg-destructive" : "bg-primary",
+                                                ].join(" ")}
+                                                style={{ width: `${progress.percent}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
                     </div>
@@ -388,7 +529,8 @@ function UploadNewVersionDialog({
 
                 <DialogFooter>
                     <Button
-                        onClick={() => {
+                        disabled={uploading}
+                        onClick={async () => {
                             if (!file) {
                                 toast.error("Select a file");
                                 return;
@@ -399,19 +541,72 @@ function UploadNewVersionDialog({
                                     toast.error("Select an existing file name");
                                     return;
                                 }
-                                onUploadNewVersion(selectedFileName, file);
-                                toast.success("Uploaded new version (mock)");
-                            } else {
-                                onUploadNewGraphic(file);
-                                toast.success("Uploaded new graphic as v1 (mock)");
                             }
 
-                            setOpen(false);
+                            const uploadId = crypto.randomUUID();
+                            const eventSource = connectGraphicUploadProgress(uploadId, (event) => {
+                                if (event.type === "error") {
+                                    setProgress({
+                                        status: "error",
+                                        percent: progress.percent,
+                                        message: event.message ?? "Upload failed",
+                                    });
+                                    return;
+                                }
+
+                                if (typeof event.overallPercent === "number") {
+                                    setProgress({
+                                        status: event.type === "completed" ? "completed" : "processing",
+                                        percent: Math.max(60, event.overallPercent),
+                                        message: event.message,
+                                    });
+                                }
+                            });
+
+                            setUploading(true);
+                            setProgress({
+                                status: "uploading",
+                                percent: 0,
+                                message: "Sending file to server",
+                            });
+
+                            try {
+                                const onClientProgress = (percent: number) => {
+                                    setProgress({
+                                        status: percent >= 100 ? "processing" : "uploading",
+                                        percent: Math.min(60, Math.round(percent * 0.6)),
+                                        message: percent >= 100 ? "Saving to storage" : "Sending file to server",
+                                    });
+                                };
+
+                                if (mode === "EXISTING") {
+                                    await onUploadNewVersion(selectedFileName, file, uploadId, onClientProgress);
+                                } else {
+                                    await onUploadNewGraphic(file, uploadId, onClientProgress);
+                                }
+
+                                setProgress({
+                                    status: "completed",
+                                    percent: 100,
+                                    message: "Uploaded",
+                                });
+                                setOpen(false);
+                            } catch (err: any) {
+                                setProgress({
+                                    status: "error",
+                                    percent: progress.percent,
+                                    message: err?.message ?? "Upload failed",
+                                });
+                                toast.error(err?.message ?? "Upload failed");
+                            } finally {
+                                eventSource.close();
+                                setUploading(false);
+                            }
                         }}
                     >
-                        Upload
+                        {uploading ? "Uploading..." : "Upload"}
                     </Button>
-                    <Button variant="outline" onClick={() => setOpen(false)}>
+                    <Button variant="outline" disabled={uploading} onClick={() => setOpen(false)}>
                         Cancel
                     </Button>
                 </DialogFooter>
@@ -421,81 +616,181 @@ function UploadNewVersionDialog({
 }
 
 export default function TicketDetailsPage() {
-    const params = useParams<{ ticketId: string }>();
-    const ticketId = params?.ticketId || "101";
+    const { me } = useAuth();
+    const graphicsRole = me ? getDomainRole(me, "GRAPHICS") : null;
 
-    const [ticket, setTicket] = React.useState<Ticket | null>(() => MOCK_TICKETS_BY_ID[ticketId] ?? null);
+    const params = useParams<{ ticketId?: string; ticketdId?: string }>();
+    const ticketId = params?.ticketId || params?.ticketdId || "";
 
-    if (!ticket) {
+    const [ticket, setTicket] = React.useState<Ticket | null>(null);
+    const [loading, setLoading] = React.useState(true);
+    const [updatingStatus, setUpdatingStatus] = React.useState(false);
+
+    async function loadTicket(options: { showPageLoading?: boolean } = {}) {
+        if (!ticketId) return;
+
+        const showPageLoading = options.showPageLoading ?? !ticket;
+        if (showPageLoading) setLoading(true);
+        try {
+            const data = await apiFetch<Ticket>(`/api/graphics/tickets/${ticketId}`);
+            setTicket(data);
+        } catch (err: any) {
+            toast.error(err?.message ?? "Failed to load ticket");
+            setTicket(null);
+        } finally {
+            if (showPageLoading) setLoading(false);
+        }
+    }
+
+    React.useEffect(() => {
+        loadTicket();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [ticketId]);
+
+    if (loading) {
         return (
             <div className="mx-auto w-full max-w-5xl p-6">
-                <p className="text-sm text-muted-foreground">Ticket not found (mock).</p>
+                <p className="text-sm text-muted-foreground">Loading ticket...</p>
             </div>
         );
     }
 
-    function uploadNewVersion(fileName: string, file: File) {
-        // mock: append a new version with a new random image URL
-        setTicket((prev) => {
-            if (!prev) return prev;
-            const next = structuredClone(prev);
-
-            const g = next.graphics.find((x) => x.fileName === fileName);
-            if (!g) return prev;
-
-            const nextNum = g.versions.length + 1;
-            g.versions.unshift({
-                version: `v${nextNum}`,
-                imageUrl: `https://picsum.photos/seed/${encodeURIComponent(file.name + "-" + Date.now())}/1200/800`,
-                uploadedAt: new Date().toISOString().slice(0, 10),
-                uploadedBy: "you@tims.group",
-            });
-
-            return next;
-        });
+    if (!ticket) {
+        return (
+            <div className="mx-auto w-full max-w-5xl p-6">
+                <p className="text-sm text-muted-foreground">Ticket not found.</p>
+            </div>
+        );
     }
 
-    function uploadNewGraphic(file: File) {
-        setTicket((prev) => {
-            if (!prev) return prev;
-            const next = structuredClone(prev);
+    async function uploadNewVersion(
+        fileName: string,
+        file: File,
+        uploadId: string,
+        onClientProgress: (percent: number) => void,
+    ) {
+        const currentTicket = ticket;
+        if (!currentTicket) return;
 
-            next.graphics.unshift({
-                id: Date.now(),
-                fileName: file.name,
-                title: file.name,
-                description: "New graphic added to ticket.",
-                versions: [
-                    {
-                        version: "v1",
-                        imageUrl: `https://picsum.photos/seed/${encodeURIComponent(file.name + "-" + Date.now())}/1200/800`,
-                        uploadedAt: new Date().toISOString().slice(0, 10),
-                        uploadedBy: "you@tims.group",
-                    },
-                ],
-                comments: [],
-            });
+        const graphic = currentTicket.graphics.find((item) => item.fileName === fileName);
+        if (!graphic) return;
 
-            return next;
+        const data = new FormData();
+        data.append("file", file);
+        data.append("version", `v${graphic.versions.length + 1}`);
+
+        await uploadFormDataWithProgress(`/api/graphics/graphics/${graphic.id}/versions?uploadId=${uploadId}`, data, {
+            method: "POST",
+            onProgress: (progress) => onClientProgress(progress.percent),
         });
+        toast.success("Uploaded new version");
+        await loadTicket({ showPageLoading: false });
     }
+
+    async function uploadNewGraphic(
+        file: File,
+        uploadId: string,
+        onClientProgress: (percent: number) => void,
+    ) {
+        const currentTicket = ticket;
+        if (!currentTicket) return;
+
+        const data = new FormData();
+        data.append("file", file);
+        data.append("fileName", file.name);
+        data.append("title", file.name);
+        data.append("version", "v1");
+
+        await uploadFormDataWithProgress(`/api/graphics/tickets/${currentTicket.id}/graphics?uploadId=${uploadId}`, data, {
+            method: "POST",
+            onProgress: (progress) => onClientProgress(progress.percent),
+        });
+        toast.success("Uploaded new graphic as v1");
+        await loadTicket({ showPageLoading: false });
+    }
+
+    async function updateTicketStatus(status: GraphicTicketStatus) {
+        const currentTicket = ticket;
+        if (!currentTicket || currentTicket.status === status) return;
+
+        setUpdatingStatus(true);
+        try {
+            const updated = await apiFetch<Ticket>(`/api/graphics/tickets/${currentTicket.id}`, {
+                method: "PATCH",
+                body: JSON.stringify({ status }),
+            });
+            setTicket((current) => current ? { ...current, status: updated.status ?? status } : current);
+            toast.success("Ticket status updated");
+        } catch (err: any) {
+            toast.error(err?.message ?? "Failed to update ticket status");
+        } finally {
+            setUpdatingStatus(false);
+        }
+    }
+
+    const canViewTicket = ticket.currentUserTicketAccess?.canView !== false;
+    const canUpdateStatus = canViewTicket && (
+        graphicsRole === "ADMIN" ||
+        graphicsRole === "MANAGER" ||
+        graphicsRole === "DESIGNER" ||
+        graphicsRole === "REVIEWER"
+    );
+    const canUpload = canViewTicket && (
+        graphicsRole === "ADMIN" ||
+        graphicsRole === "MANAGER" ||
+        graphicsRole === "DESIGNER"
+    );
 
     return (
         <div className="mx-auto w-full max-w-6xl space-y-6">
+            <Button variant="outline" size="sm" asChild className="w-fit gap-2">
+                <Link href="/viewtickets">
+                    <ArrowLeft className="h-4 w-4" />
+                    Back to tickets
+                </Link>
+            </Button>
+
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="space-y-1">
                     <h1 className="text-2xl font-semibold">{ticket.title}</h1>
                     <p className="text-sm text-muted-foreground">
-                        {ticket.projectName} • Ticket #{ticket.id}
+                        {ticket.graphicData?.project?.name ?? "Graphics project"} • Ticket #{ticket.id}
                     </p>
                     {ticket.description && <p className="text-sm text-muted-foreground">{ticket.description}</p>}
                 </div>
 
-                <UploadNewVersionDialog
-                    ticket={ticket}
-                    onUploadNewVersion={uploadNewVersion}
-                    onUploadNewGraphic={uploadNewGraphic}
-                />
+                <div className="flex flex-col gap-2 sm:items-end">
+                    {canUpdateStatus ? (
+                        <>
+                            <Select
+                                value={ticket.status ?? "OPEN"}
+                                onValueChange={(value) => updateTicketStatus(value as GraphicTicketStatus)}
+                                disabled={updatingStatus}
+                            >
+                                <SelectTrigger className="w-[190px]">
+                                    <SelectValue placeholder="Status" />
+                                </SelectTrigger>
+                                <SelectContent className="w-[var(--radix-select-trigger-width)]">
+                                    {TICKET_STATUSES.map((status) => (
+                                        <SelectItem key={status.value} value={status.value}>
+                                            {status.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+
+                            {canUpload && (
+                                <UploadNewVersionDialog
+                                    ticket={ticket}
+                                    onUploadNewVersion={uploadNewVersion}
+                                    onUploadNewGraphic={uploadNewGraphic}
+                                />
+                            )}
+                        </>
+                    ) : (
+                        <Badge variant="outline">{statusLabel(ticket.status)}</Badge>
+                    )}
+                </div>
             </div>
 
             <Separator />
@@ -505,15 +800,8 @@ export default function TicketDetailsPage() {
                     <TicketGraphicCard
                         key={g.id}
                         graphic={g}
-                        onUpdate={(nextGraphic) => {
-                            setTicket((prev) => {
-                                if (!prev) return prev;
-                                const next = structuredClone(prev);
-                                const idx = next.graphics.findIndex((x) => x.id === g.id);
-                                if (idx >= 0) next.graphics[idx] = nextGraphic;
-                                return next;
-                            });
-                        }}
+                        canDownload={canViewTicket}
+                        onUpdate={loadTicket}
                     />
                 ))}
             </div>
@@ -523,12 +811,15 @@ export default function TicketDetailsPage() {
 
 function TicketGraphicCard({
     graphic,
+    canDownload,
     onUpdate,
 }: {
     graphic: TicketGraphic;
-    onUpdate: (g: TicketGraphic) => void;
+    canDownload: boolean;
+    onUpdate: () => Promise<void>;
 }) {
     const [selectedVersion, setSelectedVersion] = React.useState(graphic.versions[0]?.version ?? "v1");
+    const [downloading, setDownloading] = React.useState(false);
 
     React.useEffect(() => {
         if (!graphic.versions.some((v) => v.version === selectedVersion)) {
@@ -542,13 +833,72 @@ function TicketGraphicCard({
         [graphic.versions, selectedVersion],
     );
 
+    const comments = React.useMemo(() => {
+        return graphic.versions.flatMap((version) =>
+            (version.comments ?? []).map((comment) => ({
+                id: comment.id,
+                text: comment.text,
+                createdAt: comment.createdAt,
+                author: comment.authorName ?? comment.author?.name ?? comment.authorEmail ?? comment.author?.email ?? "Unknown",
+                version: version.version,
+            })),
+        );
+    }, [graphic.versions]);
+
+    async function addComment(text: string) {
+        if (!active?.id) return;
+
+        await apiFetch(`/api/graphics/versions/${active.id}/comments`, {
+            method: "POST",
+            body: JSON.stringify({ text }),
+        });
+        toast.success("Comment added");
+        await onUpdate();
+    }
+
+    async function downloadActiveGraphic() {
+        if (!active?.id || !canDownload || downloading) return;
+
+        setDownloading(true);
+        try {
+            const response = await fetchDownloadResponse(`/api/graphics/versions/${active.id}/download`);
+            if (!response.ok) {
+                let message = `Download failed: ${response.status}`;
+                try {
+                    const data = await response.json();
+                    message = data?.message || message;
+                } catch {
+                    // ignore non-json download errors
+                }
+                throw new Error(message);
+            }
+
+            const blob = await response.blob();
+            const objectUrl = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = objectUrl;
+            link.download = fileNameFromDisposition(response.headers.get("Content-Disposition"))
+                || active.originalFileName
+                || graphic.fileName;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(objectUrl);
+            toast.success("Download started");
+        } catch (err: any) {
+            toast.error(err?.message ?? "Failed to download graphic");
+        } finally {
+            setDownloading(false);
+        }
+    }
+
     return (
         <Card className="flex flex-col overflow-hidden">
             <CardHeader className="space-y-2">
                 <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                        <CardTitle className="text-base truncate">{graphic.title}</CardTitle>
-                        <CardDescription className="truncate">{graphic.fileName}</CardDescription>
+                        <CardTitle className="text-base truncate">{graphic.fileName}</CardTitle>
+                        
                     </div>
                     <Badge variant="secondary">{selectedVersion}</Badge>
                 </div>
@@ -561,7 +911,7 @@ function TicketGraphicCard({
                         <SelectContent className="w-[var(--radix-select-trigger-width)]">
                             {graphic.versions.map((v) => (
                                 <SelectItem key={v.version} value={v.version}>
-                                    {v.version} • {v.uploadedAt}
+                                    {v.version} • {new Date(v.uploadedAt).toLocaleDateString()}
                                 </SelectItem>
                             ))}
                         </SelectContent>
@@ -575,8 +925,9 @@ function TicketGraphicCard({
                         <Button
                             variant="outline"
                             size="icon"
-                            title="Download"
-                            onClick={() => toast.success("Download started (mock)")}
+                            title={canDownload ? "Download" : "Download unavailable"}
+                            disabled={!canDownload || !active?.id || downloading}
+                            onClick={downloadActiveGraphic}
                         >
                             <Download className="h-4 w-4" />
                         </Button>
@@ -585,7 +936,7 @@ function TicketGraphicCard({
             </CardHeader>
 
             <CardContent className="flex-1 space-y-3">
-                <p className="text-sm text-muted-foreground">{graphic.description}</p>
+                {graphic.description && <p className="text-sm text-muted-foreground">{graphic.description}</p>}
 
                 <div className="relative h-56 w-full overflow-hidden rounded-md border bg-muted">
                     {active?.imageUrl ? (
@@ -597,18 +948,9 @@ function TicketGraphicCard({
 
                 <div className="flex flex-wrap gap-2">
                     <AddCommentDialog
-                        onAdd={(text) => {
-                            const c = {
-                                id: Date.now(),
-                                text,
-                                createdAt: new Date().toISOString().slice(0, 10),
-                                author: "You",
-                                version: selectedVersion,
-                            };
-                            onUpdate({ ...graphic, comments: [c, ...graphic.comments] });
-                        }}
+                        onAdd={addComment}
                     />
-                    <CommentsDialog comments={graphic.comments} />
+                    <CommentsDialog comments={comments} />
                 </div>
             </CardContent>
         </Card>
