@@ -145,9 +145,9 @@ export default function GraphicProjectsPage() {
             setName("");
             setSlug("");
             setAutoSlug(true);
-            setGraphicProjects((current) => sortProjects([created, ...current]));
-            setAllProjects((current) => sortProjects([created, ...current]));
-            toast.success("Graphics project created");
+            setGraphicProjects((current) => sortProjects([created, ...current.filter((project) => project.id !== created.id)]));
+            setAllProjects((current) => sortProjects([created, ...current.filter((project) => project.id !== created.id)]));
+            toast.success(created.webglData ? "Existing WebGL project added to Graphics" : "Graphics project created");
         } catch (err: any) {
             toast.error(err?.message ?? "Failed to create graphics project");
         } finally {
@@ -213,8 +213,12 @@ export default function GraphicProjectsPage() {
                 </Button>
             </div>
 
-            <div className="grid py-10 gap-8 lg:grid-cols-2 ">
-                <Card className="h-full">
+            <div
+                className="grid w-full py-10"
+                style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 30rem), 1fr))" }}
+            >
+                <div className="min-w-0 pb-8 md:pb-0" style={{ paddingRight: "16px" }}>
+                <Card className="h-full min-w-0">
                         <CardHeader className="pb-3">
                             <CardTitle className="flex items-center gap-2">
                                 <FolderPlus className="h-5 w-5" />
@@ -226,7 +230,9 @@ export default function GraphicProjectsPage() {
                             <form onSubmit={createGraphicProject} className="space-y-4">
                                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
                                     <div className="space-y-2">
-                                        <Label>Project name</Label>
+                                        <div className="flex min-h-6 items-center">
+                                            <Label>Project name</Label>
+                                        </div>
                                         <Input
                                             value={name}
                                             onChange={(event) => setName(event.target.value)}
@@ -236,7 +242,7 @@ export default function GraphicProjectsPage() {
                                     </div>
 
                                     <div className="space-y-2">
-                                        <div className="flex items-center justify-between gap-3">
+                                        <div className="flex min-h-6 items-center justify-between gap-3">
                                             <Label>Project slug</Label>
                                             <label className="flex items-center gap-2 text-xs text-muted-foreground">
                                                 <input
@@ -267,8 +273,10 @@ export default function GraphicProjectsPage() {
                             </form>
                         </CardContent>
                     </Card>
+                </div>
 
-                    <Card className="h-full">
+                <div className="min-w-0" style={{ paddingLeft: "16px" }}>
+                    <Card className="h-full min-w-0">
                         <CardHeader className="pb-3">
                             <CardTitle className="flex items-center gap-2">
                                 <ArrowDownToLine className="h-5 w-5" />
@@ -318,6 +326,7 @@ export default function GraphicProjectsPage() {
                             </div>
                         </CardContent>
                     </Card>
+                </div>
             </div>
 
                 <Card className="min-h-[460px]">

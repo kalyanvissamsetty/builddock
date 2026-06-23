@@ -308,6 +308,11 @@ export default function CreateTicketPage() {
             return;
         }
 
+        if (assigneePickerId) {
+            toast.error("Click Add to include the selected assignee, or clear the assignee field");
+            return;
+        }
+
         setUploading(true);
         try {
             const ticket = await createTicket({

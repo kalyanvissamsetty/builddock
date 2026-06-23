@@ -3,9 +3,9 @@
 import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, Download, UploadCloud } from "lucide-react";
+import { ArrowLeft, Download, Expand, Trash2, UploadCloud } from "lucide-react";
 import { apiFetch, getApiBase, uploadFormDataWithProgress } from "@/components/lib/api";
 import { useAuth } from "@/components/auth/useAuth";
 import { getDomainRole } from "@/components/auth/domain";
@@ -15,6 +15,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
     Dialog,
     DialogClose,
@@ -87,6 +97,38 @@ function statusLabel(status: GraphicTicketStatus | undefined) {
     return TICKET_STATUSES.find((item) => item.value === (status ?? "OPEN"))?.label ?? "Open";
 }
 
+function formatLocalDateTime(value: string) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+
+    return new Intl.DateTimeFormat(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+    }).format(date);
+}
+
+function ClippedDescription({
+    text,
+    className,
+    maxChars = 125,
+}: {
+    text?: string | null;
+    className?: string;
+    maxChars?: number;
+}) {
+    if (!text) return null;
+
+    const normalized = text.trim();
+    const visibleText = normalized.length > maxChars ? `${normalized.slice(0, maxChars).trimEnd()}...` : normalized;
+
+    return (
+        <p className={`whitespace-pre-wrap break-words ${className ?? ""}`}>{visibleText}</p>
+    );
+}
+
 function fileNameFromDisposition(value: string | null) {
     if (!value) return null;
 
@@ -100,6 +142,11 @@ function fileNameFromDisposition(value: string | null) {
     }
 
     return value.match(/filename="([^"]+)"/i)?.[1] ?? null;
+}
+
+function clippedFileName(value: string, maxChars = 44) {
+    if (value.length <= maxChars) return value;
+    return `${value.slice(0, maxChars).trimEnd()}.....`;
 }
 
 async function fetchDownloadResponse(path: string) {
@@ -165,10 +212,23 @@ function connectGraphicUploadProgress(
     return eventSource;
 }
 
-function CommentsDialog({ comments }: { comments: Comment[] }) {
+function CommentsDialog({
+    comments,
+    versions,
+    defaultVersion,
+}: {
+    comments: Comment[];
+    versions: string[];
+    defaultVersion?: string;
+}) {
     const [sort, setSort] = React.useState<"NEWEST" | "OLDEST">("NEWEST");
-    const versions = React.useMemo(() => Array.from(new Set(comments.map((c) => c.version))).sort(), [comments]);
-    const [version, setVersion] = React.useState<string>("ALL");
+    const fallbackVersion = versions.includes(defaultVersion ?? "") ? defaultVersion! : versions[0] ?? "ALL";
+    const [version, setVersion] = React.useState<string>(fallbackVersion);
+
+    React.useEffect(() => {
+        const nextVersion = versions.includes(defaultVersion ?? "") ? defaultVersion! : versions[0] ?? "ALL";
+        setVersion(nextVersion);
+    }, [defaultVersion, versions]);
 
     const list = React.useMemo(() => {
         let xs = comments.slice();
@@ -235,7 +295,7 @@ function CommentsDialog({ comments }: { comments: Comment[] }) {
                                         <Badge variant="outline">{c.version}</Badge>
                                     </div>
                                     <p className="mt-2 text-sm">{c.text}</p>
-                                    <p className="mt-2 text-xs text-muted-foreground">{c.createdAt}</p>
+                                    <p className="mt-2 text-xs text-muted-foreground">{formatLocalDateTime(c.createdAt)}</p>
                                 </div>
                             ))
                         )}
@@ -308,7 +368,11 @@ function UploadNewVersionDialog({
     onUploadNewGraphic: (file: File, uploadId: string, onClientProgress: (percent: number) => void) => Promise<void>;
 }) {
     const [open, setOpen] = React.useState(false);
-    const [mode, setMode] = React.useState<"EXISTING" | "NEW">("EXISTING");
+    const fileNames = React.useMemo(() => ticket.graphics.map((g) => g.fileName), [ticket.graphics]);
+    const hasExistingGraphics = fileNames.length > 0;
+    const defaultMode = hasExistingGraphics ? "EXISTING" : "NEW";
+
+    const [mode, setMode] = React.useState<"EXISTING" | "NEW">(defaultMode);
     const [selectedFileName, setSelectedFileName] = React.useState<string>("");
     const [file, setFile] = React.useState<File | null>(null);
     const [uploading, setUploading] = React.useState(false);
@@ -316,16 +380,21 @@ function UploadNewVersionDialog({
         percent: 0,
         status: "idle",
     });
-
-    const fileNames = React.useMemo(() => ticket.graphics.map((g) => g.fileName), [ticket.graphics]);
+    const selectedFileIndex = selectedFileName ? fileNames.findIndex((name) => name === selectedFileName) : -1;
 
     function reset() {
-        setMode("EXISTING");
+        setMode(defaultMode);
         setSelectedFileName("");
         setFile(null);
         setUploading(false);
         setProgress({ percent: 0, status: "idle" });
     }
+
+    React.useEffect(() => {
+        if (!hasExistingGraphics && mode === "EXISTING") {
+            setMode("NEW");
+        }
+    }, [hasExistingGraphics, mode]);
 
     function closeAndReset() {
         reset();
@@ -347,7 +416,7 @@ function UploadNewVersionDialog({
                 </Button>
             </DialogTrigger>
 
-            <DialogContent className="max-h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] max-w-none overflow-y-auto sm:w-[42rem]">
+            <DialogContent className="!w-[min(calc(100vw-2rem),42rem)] !max-w-[min(calc(100vw-2rem),42rem)] max-h-[calc(100vh-2rem)] overflow-x-hidden overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Upload to ticket</DialogTitle>
                     <DialogDescription>
@@ -356,18 +425,22 @@ function UploadNewVersionDialog({
                 </DialogHeader>
 
                 <div className="space-y-4">
-                    <div className="grid gap-2 sm:grid-cols-2">
-                        <Button
-                            type="button"
-                            variant={mode === "EXISTING" ? "default" : "outline"}
-                            disabled={uploading}
-                            onClick={() => setMode("EXISTING")}
-                        >
-                            New version
-                        </Button>
+                    <div className={`grid min-w-0 gap-2 ${hasExistingGraphics ? "sm:grid-cols-2" : ""}`}>
+                        {hasExistingGraphics && (
+                            <Button
+                                type="button"
+                                variant={mode === "EXISTING" ? "default" : "outline"}
+                                className="min-w-0"
+                                disabled={uploading}
+                                onClick={() => setMode("EXISTING")}
+                            >
+                                New version
+                            </Button>
+                        )}
                         <Button
                             type="button"
                             variant={mode === "NEW" ? "default" : "outline"}
+                            className="min-w-0"
                             disabled={uploading}
                             onClick={() => setMode("NEW")}
                         >
@@ -378,14 +451,20 @@ function UploadNewVersionDialog({
                     {mode === "EXISTING" && (
                         <div className="space-y-2">
                             <p className="text-sm font-medium">Choose existing file</p>
-                            <Select value={selectedFileName} onValueChange={setSelectedFileName}>
-                                <SelectTrigger className="w-full" disabled={uploading}>
-                                    <SelectValue placeholder="Select file name" className="truncate" />
+                            <Select
+                                value={selectedFileIndex >= 0 ? String(selectedFileIndex) : ""}
+                                onValueChange={(value) => {
+                                    const index = Number(value);
+                                    setSelectedFileName(fileNames[index] ?? "");
+                                }}
+                            >
+                                <SelectTrigger className="w-full min-w-0 overflow-hidden [&_[data-slot=select-value]]:min-w-0 [&_[data-slot=select-value]]:truncate" disabled={uploading}>
+                                    <SelectValue placeholder="Select file name" />
                                 </SelectTrigger>
-                                <SelectContent className="w-[var(--radix-select-trigger-width)]">
-                                    {fileNames.map((f) => (
-                                        <SelectItem key={f} value={f} className="max-w-full">
-                                            <span className="block truncate">{f}</span>
+                                <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)] max-w-[var(--radix-select-trigger-width)]">
+                                    {fileNames.map((f, index) => (
+                                        <SelectItem key={f} value={String(index)} title={f} className="min-w-0 max-w-full overflow-hidden pr-8">
+                                            <span className="block min-w-0 max-w-full truncate">{clippedFileName(f)}</span>
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -460,17 +539,17 @@ function UploadNewVersionDialog({
                                         </Button>
                                     </div>
                                 ) : (
-                                    <div className="flex min-w-0 flex-col gap-3 rounded-md border bg-background p-3 sm:flex-row sm:items-start sm:justify-between">
+                                    <div className="grid min-w-0 gap-3 overflow-hidden rounded-md border bg-background p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
                                         <div className="min-w-0 flex-1 space-y-1">
-                                            <p className="break-words text-sm font-medium sm:truncate" title={file.name}>
-                                                {file.name}
+                                            <p className="truncate text-sm font-medium" title={file.name}>
+                                                {clippedFileName(file.name, 52)}
                                             </p>
                                             <p className="text-xs text-muted-foreground">
                                                 {Math.round(file.size / 1024)} KB • {file.type}
                                             </p>
                                         </div>
 
-                                        <div className="flex shrink-0 items-center gap-2 self-start">
+                                        <div className="flex shrink-0 flex-wrap items-center gap-2 self-start sm:justify-end">
                                             <Button
                                                 type="button"
                                                 variant="outline"
@@ -502,7 +581,7 @@ function UploadNewVersionDialog({
                                 {(uploading || progress.status !== "idle") && (
                                     <div className="space-y-2 rounded-md bg-muted/30 p-3">
                                         <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                                            <span className="truncate">
+                                            <span className="min-w-0 truncate" title={progress.message}>
                                                 {progress.status === "uploading"
                                                     ? "Uploading"
                                                     : progress.status === "processing"
@@ -512,7 +591,7 @@ function UploadNewVersionDialog({
                                                             : progress.status === "error"
                                                                 ? "Failed"
                                                                 : "Waiting"}
-                                                {progress.message ? ` - ${progress.message}` : ""}
+                                                {progress.message ? ` - ${clippedFileName(progress.message, 48)}` : ""}
                                             </span>
                                             <span className="shrink-0">{progress.percent}%</span>
                                         </div>
@@ -532,7 +611,7 @@ function UploadNewVersionDialog({
                     </div>
                 </div>
 
-                <DialogFooter>
+                <DialogFooter className="min-w-0 flex-wrap">
                     <Button
                         disabled={uploading}
                         onClick={async () => {
@@ -622,6 +701,7 @@ function UploadNewVersionDialog({
 
 export default function TicketDetailsPage() {
     const { me } = useAuth();
+    const router = useRouter();
     const graphicsRole = me ? getDomainRole(me, "GRAPHICS") : null;
 
     const params = useParams<{ ticketId?: string; ticketdId?: string }>();
@@ -630,6 +710,8 @@ export default function TicketDetailsPage() {
     const [ticket, setTicket] = React.useState<Ticket | null>(null);
     const [loading, setLoading] = React.useState(true);
     const [updatingStatus, setUpdatingStatus] = React.useState(false);
+    const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+    const [deletingTicket, setDeletingTicket] = React.useState(false);
 
     async function loadTicket(options: { showPageLoading?: boolean } = {}) {
         if (!ticketId) return;
@@ -733,6 +815,25 @@ export default function TicketDetailsPage() {
         }
     }
 
+    async function deleteTicket() {
+        const currentTicket = ticket;
+        if (!currentTicket || deletingTicket) return;
+
+        setDeletingTicket(true);
+        try {
+            await apiFetch(`/api/graphics/tickets/${currentTicket.id}`, {
+                method: "DELETE",
+            });
+            toast.success("Ticket deleted");
+            router.push("/viewtickets");
+        } catch (err: any) {
+            toast.error(err?.message ?? "Failed to delete ticket");
+        } finally {
+            setDeletingTicket(false);
+            setDeleteDialogOpen(false);
+        }
+    }
+
     const canViewTicket = ticket.currentUserTicketAccess?.canView !== false;
     const canUpdateStatus = canViewTicket && (
         graphicsRole === "ADMIN" ||
@@ -745,6 +846,10 @@ export default function TicketDetailsPage() {
         graphicsRole === "MANAGER" ||
         graphicsRole === "DESIGNER"
     );
+    const canDeleteTicket = canViewTicket && (
+        graphicsRole === "ADMIN" ||
+        graphicsRole === "MANAGER"
+    );
 
     return (
         <div className="mx-auto w-full max-w-6xl space-y-6">
@@ -756,15 +861,15 @@ export default function TicketDetailsPage() {
             </Button>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="space-y-1">
+                <div className="min-w-0 flex-1 space-y-1">
                     <h1 className="text-2xl font-semibold">{ticket.title}</h1>
                     <p className="text-sm text-muted-foreground">
                         {ticket.graphicData?.project?.name ?? "Graphics project"} • Ticket #{ticket.id}
                     </p>
-                    {ticket.description && <p className="text-sm text-muted-foreground">{ticket.description}</p>}
+                    <ClippedDescription text={ticket.description} className="text-sm text-muted-foreground" />
                 </div>
 
-                <div className="flex flex-col gap-2 sm:items-end">
+                <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:flex-nowrap sm:justify-end">
                     {canUpdateStatus ? (
                         <>
                             <Select
@@ -772,7 +877,7 @@ export default function TicketDetailsPage() {
                                 onValueChange={(value) => updateTicketStatus(value as GraphicTicketStatus)}
                                 disabled={updatingStatus}
                             >
-                                <SelectTrigger className="w-[190px]">
+                                <SelectTrigger className="w-[150px]">
                                     <SelectValue placeholder="Status" />
                                 </SelectTrigger>
                                 <SelectContent className="w-[var(--radix-select-trigger-width)]">
@@ -791,6 +896,19 @@ export default function TicketDetailsPage() {
                                     onUploadNewGraphic={uploadNewGraphic}
                                 />
                             )}
+                            {canDeleteTicket && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    className="text-destructive hover:text-destructive"
+                                    onClick={() => setDeleteDialogOpen(true)}
+                                    aria-label="Delete ticket"
+                                    title="Delete ticket"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            )}
                         </>
                     ) : (
                         <Badge variant="outline">{statusLabel(ticket.status)}</Badge>
@@ -801,7 +919,18 @@ export default function TicketDetailsPage() {
             <Separator />
 
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2">
-                {ticket.graphics.map((g) => (
+                {ticket.graphics.length === 0 ? (
+                    <Card className="sm:col-span-2">
+                        <CardContent className="flex min-h-52 items-center justify-center p-8 text-center">
+                            <div className="space-y-2">
+                                <p className="text-sm font-medium">No graphics to display</p>
+                                <p className="text-sm text-muted-foreground">
+                                    Upload a new graphic to start collecting versions and comments for this ticket.
+                                </p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ) : ticket.graphics.map((g) => (
                     <TicketGraphicCard
                         key={g.id}
                         graphic={g}
@@ -810,6 +939,31 @@ export default function TicketDetailsPage() {
                     />
                 ))}
             </div>
+
+            <AlertDialog open={deleteDialogOpen} onOpenChange={(open) => !open && !deletingTicket && setDeleteDialogOpen(false)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete ticket?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will delete <span className="font-medium text-foreground">{ticket.title}</span>, including its graphics,
+                            versions, comments, assignments, and uploaded files. This cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={deletingTicket}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            disabled={deletingTicket}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={(event) => {
+                                event.preventDefault();
+                                deleteTicket();
+                            }}
+                        >
+                            {deletingTicket ? "Deleting..." : "Delete ticket"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
@@ -901,9 +1055,8 @@ function TicketGraphicCard({
         <Card className="flex flex-col overflow-hidden">
             <CardHeader className="space-y-2">
                 <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                        <CardTitle className="text-base truncate">{graphic.fileName}</CardTitle>
-                        
+                    <div className="min-w-0 flex-1">
+                        <CardTitle className="max-w-full break-all text-base leading-snug">{graphic.fileName}</CardTitle>
                     </div>
                     <Badge variant="secondary">{selectedVersion}</Badge>
                 </div>
@@ -941,11 +1094,26 @@ function TicketGraphicCard({
             </CardHeader>
 
             <CardContent className="flex-1 space-y-3">
-                {graphic.description && <p className="text-sm text-muted-foreground">{graphic.description}</p>}
+                <ClippedDescription text={graphic.description} className="text-sm text-muted-foreground" maxChars={125} />
 
                 <div className="relative h-56 w-full overflow-hidden rounded-md border bg-muted">
                     {active?.imageUrl ? (
-                        <Image src={active.imageUrl} alt={graphic.title} fill className="object-contain" unoptimized />
+                        <FullscreenImageDialog
+                            title={`${graphic.fileName} (${selectedVersion})`}
+                            imageUrl={active.imageUrl}
+                            trigger={
+                                <button
+                                    type="button"
+                                    className="group relative block h-full w-full cursor-zoom-in overflow-hidden"
+                                    aria-label={`Open ${graphic.fileName} fullscreen`}
+                                >
+                                    <Image src={active.imageUrl} alt={graphic.title} fill className="object-contain" unoptimized />
+                                    <span className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-md bg-background/85 text-foreground opacity-0 shadow-sm transition group-hover:opacity-100">
+                                        <Expand className="h-4 w-4" />
+                                    </span>
+                                </button>
+                            }
+                        />
                     ) : (
                         <div className="flex h-full items-center justify-center text-sm text-muted-foreground">No preview</div>
                     )}
@@ -955,7 +1123,11 @@ function TicketGraphicCard({
                     <AddCommentDialog
                         onAdd={addComment}
                     />
-                    <CommentsDialog comments={comments} />
+                    <CommentsDialog
+                        comments={comments}
+                        versions={graphic.versions.map((version) => version.version)}
+                        defaultVersion={selectedVersion}
+                    />
                 </div>
             </CardContent>
         </Card>

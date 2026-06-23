@@ -30,9 +30,11 @@ function roundZoom(n: number) {
 export function FullscreenImageDialog({
     title,
     imageUrl,
+    trigger,
 }: {
     title: string;
     imageUrl: string;
+    trigger?: React.ReactNode;
 }) {
     const [open, setOpen] = React.useState(false);
     const [zoom, setZoom] = React.useState(MIN_ZOOM);
@@ -115,9 +117,11 @@ export function FullscreenImageDialog({
             }}
         >
             <DialogTrigger asChild>
-                <Button variant="outline" size="icon" title="Fullscreen">
-                    <Expand className="h-4 w-4" />
-                </Button>
+                {trigger ?? (
+                    <Button variant="outline" size="icon" title="Fullscreen">
+                        <Expand className="h-4 w-4" />
+                    </Button>
+                )}
             </DialogTrigger>
 
             <DialogContent

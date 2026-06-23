@@ -7,10 +7,19 @@ import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { apiFetch } from "@/components/lib/api";
 import { useAuth } from "@/components/auth/useAuth";
 import { getDomainRole } from "@/components/auth/domain";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
     Select,
     SelectContent,
@@ -45,6 +54,23 @@ function statusLabel(status: GraphicTicketStatus | undefined) {
     return TICKET_STATUSES.find((item) => item.value === (status ?? "OPEN"))?.label ?? "Open";
 }
 
+function ClippedDescription({
+    text,
+    maxChars = 125,
+}: {
+    text?: string | null;
+    maxChars?: number;
+}) {
+    if (!text) return null;
+
+    const normalized = text.trim();
+    const visibleText = normalized.length > maxChars ? `${normalized.slice(0, maxChars).trimEnd()}...` : normalized;
+
+    return (
+        <p className="whitespace-pre-wrap break-words text-sm text-muted-foreground">{visibleText}</p>
+    );
+}
+
 export default function ViewTicketsPage() {
     const { me } = useAuth();
     const graphicsRole = me ? getDomainRole(me, "GRAPHICS") : null;
@@ -59,6 +85,8 @@ export default function ViewTicketsPage() {
     const [tickets, setTickets] = React.useState<Ticket[]>([]);
     const [loading, setLoading] = React.useState(true);
     const [updatingTicketId, setUpdatingTicketId] = React.useState<number | null>(null);
+    const [ticketToDelete, setTicketToDelete] = React.useState<Ticket | null>(null);
+    const [deletingTicket, setDeletingTicket] = React.useState(false);
 
     async function loadData() {
         setLoading(true);
@@ -116,6 +144,22 @@ export default function ViewTicketsPage() {
         }
     }
 
+    async function deleteTicket() {
+        if (!ticketToDelete || deletingTicket) return;
+
+        setDeletingTicket(true);
+        try {
+            await apiFetch(`/api/graphics/tickets/${ticketToDelete.id}`, { method: "DELETE" });
+            setTickets((current) => current.filter((ticket) => ticket.id !== ticketToDelete.id));
+            toast.success("Ticket deleted");
+            setTicketToDelete(null);
+        } catch (err: any) {
+            toast.error(err?.message ?? "Failed to delete ticket");
+        } finally {
+            setDeletingTicket(false);
+        }
+    }
+
     return (
         <div className="mx-auto w-full max-w-6xl space-y-6">
             <div>
@@ -164,7 +208,7 @@ export default function ViewTicketsPage() {
                     const p = t.graphicData?.project ? projectById.get(t.graphicData.project.id) ?? t.graphicData.project : null;
                     const canUpdateStatus = canUpdateTicketStatus && t.currentUserTicketAccess?.canView !== false;
                     return (
-                        <Card key={t.id} className="hover:shadow-md transition">
+                        <Card key={t.id} className="flex h-full flex-col hover:shadow-md transition">
                             <CardHeader className="space-y-2">
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0 space-y-1">
@@ -197,19 +241,47 @@ export default function ViewTicketsPage() {
                                     )}
                                 </div>
                             </CardHeader>
-                            <CardContent className="space-y-3">
-                                {t.description && <p className="text-sm text-muted-foreground">{t.description}</p>}
+                            <CardContent className="flex flex-1 flex-col space-y-3">
+                                <ClippedDescription text={t.description} />
                                 <div className="flex items-center gap-2">
                                     <Badge variant="secondary">{t._count?.graphics ?? 0} graphic(s)</Badge>
                                 </div>
-                                <Button asChild className="w-full">
-                                    <Link href={`/tickets/${t.id}`}>Open ticket</Link>
-                                </Button>
+                                <div className="mt-auto flex gap-2 pt-1">
+                                    <Button asChild className="flex-1">
+                                        <Link href={`/tickets/${t.id}`}>Open ticket</Link>
+                                    </Button>
+                                    
+                                </div>
                             </CardContent>
                         </Card>
                     );
                 })}
             </div>
+
+            <AlertDialog open={Boolean(ticketToDelete)} onOpenChange={(open) => !open && !deletingTicket && setTicketToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete ticket?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will delete <span className="font-medium text-foreground">{ticketToDelete?.title}</span>, including its graphics,
+                            versions, comments, assignments, and uploaded files. This cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={deletingTicket}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            disabled={deletingTicket}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={(event) => {
+                                event.preventDefault();
+                                deleteTicket();
+                            }}
+                        >
+                            {deletingTicket ? "Deleting..." : "Delete ticket"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

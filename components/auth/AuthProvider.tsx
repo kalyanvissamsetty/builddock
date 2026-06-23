@@ -32,6 +32,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return user;
       } catch {
         setMe(null);
+        try {
+          localStorage.removeItem("bd_has_session");
+        } catch { }
         return null;
       } finally {
         inFlightRef.current = null;

@@ -106,6 +106,7 @@ export default function InviteUsersPage() {
         envId: null,
         versionId: null,
     });
+    const shouldAssignBuild = selectedModule === "WEBGL" && selectedRole === "VIEWER";
 
     React.useEffect(() => {
         if (!emailsText) return;
@@ -195,6 +196,11 @@ export default function InviteUsersPage() {
         loadInvites();
     }, [loadInvites]);
 
+    React.useEffect(() => {
+        if (shouldAssignBuild) return;
+        setBuildSel({ projectId: null, envId: null, versionId: null });
+    }, [shouldAssignBuild]);
+
     const canSend = React.useMemo(() => {
         if (loadingDomains) return false;
         if (loadingRoles) return false;
@@ -240,14 +246,17 @@ export default function InviteUsersPage() {
 
         setSending(true);
         try {
-            if (selectedModule === "WEBGL" && !buildSel.versionId) return;
+            if (shouldAssignBuild && !buildSel.versionId) {
+                toast.error("Select a build for viewer invite");
+                return;
+            }
             const resp = await apiFetch<any>("/api/admin/invites/bulk", {
                 method: "POST",
                 body: JSON.stringify({
                     emails,
                     role: selectedRole,
                     module: selectedModule,
-                    versionId: buildSel.versionId
+                    versionId: shouldAssignBuild ? buildSel.versionId : undefined
                 }),
             });
 
@@ -264,7 +273,7 @@ export default function InviteUsersPage() {
             
             // reset input box but keep role
             setEmailsText("");
-            if (selectedModule === "WEBGL") setBuildSel({ projectId: null, envId: null, versionId: null })
+            if (shouldAssignBuild) setBuildSel({ projectId: null, envId: null, versionId: null })
 
             await loadInvites();
         } catch (err: any) {
@@ -343,7 +352,7 @@ export default function InviteUsersPage() {
                                                 ) : null}
                                             </div>
                                         </div>
-                                        {selectedModule === "WEBGL" && (
+                                        {shouldAssignBuild && (
                                             <>
                                                 <br/>
                                                 <Label>Select a Build to assign</Label>
@@ -351,7 +360,7 @@ export default function InviteUsersPage() {
                                             </>
                                         )}
 
-                                        <Button type="submit" disabled={!canSend || sending || (selectedModule === "WEBGL" && (!buildSel.projectId || !buildSel.envId || !buildSel.versionId))}>
+                                        <Button type="submit" disabled={!canSend || sending || (shouldAssignBuild && (!buildSel.projectId || !buildSel.envId || !buildSel.versionId))}>
                                             {sending ? "Sending..." : "Send OTP Invites"}
                                         </Button>
 
