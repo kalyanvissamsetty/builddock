@@ -317,8 +317,23 @@ function AddCommentDialog({ onAdd }: { onAdd: (text: string) => Promise<void> })
     const [text, setText] = React.useState("");
     const [submitting, setSubmitting] = React.useState(false);
 
+    function closeDialog() {
+        setText("");
+        setOpen(false);
+    }
+
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog
+            open={open}
+            onOpenChange={(nextOpen) => {
+                if (nextOpen) {
+                    setOpen(true);
+                    return;
+                }
+
+                closeDialog();
+            }}
+        >
             <DialogTrigger asChild>
                 <Button type="button" variant="outline" size="sm">
                     Add comment
@@ -329,7 +344,14 @@ function AddCommentDialog({ onAdd }: { onAdd: (text: string) => Promise<void> })
                     <DialogTitle>Add comment</DialogTitle>
                     
                 </DialogHeader>
-                <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={5} placeholder="Write comment..." />
+                <Textarea
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    rows={5}
+                    placeholder="Write comment..."
+                    clearable={false}
+                    className="h-44 max-h-60 resize-none overflow-y-auto field-sizing-fixed sm:h-52"
+                />
                 <DialogFooter>
                     <Button
                         type="button"
@@ -340,8 +362,7 @@ function AddCommentDialog({ onAdd }: { onAdd: (text: string) => Promise<void> })
                             setSubmitting(true);
                             try {
                                 await onAdd(t);
-                                setText("");
-                                setOpen(false);
+                                closeDialog();
                             } catch (err: any) {
                                 toast.error(err?.message ?? "Failed to add comment");
                             } finally {
@@ -351,7 +372,7 @@ function AddCommentDialog({ onAdd }: { onAdd: (text: string) => Promise<void> })
                     >
                         {submitting ? "Submitting..." : "Submit"}
                     </Button>
-                    <Button type="button" variant="outline" disabled={submitting} onClick={() => setOpen(false)}>Cancel</Button>
+                    <Button type="button" variant="outline" disabled={submitting} onClick={closeDialog}>Cancel</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -380,12 +401,38 @@ function UploadNewVersionDialog({
         percent: 0,
         status: "idle",
     });
+    const fileInputRef = React.useRef<HTMLInputElement | null>(null);
     const selectedFileIndex = selectedFileName ? fileNames.findIndex((name) => name === selectedFileName) : -1;
+
+    function selectUploadFile(nextFile: File | null) {
+        setFile(nextFile);
+        if (fileInputRef.current && !nextFile) {
+            fileInputRef.current.value = "";
+        }
+    }
+
+    function openFilePicker() {
+        if (!fileInputRef.current) return;
+        fileInputRef.current.value = "";
+        fileInputRef.current.click();
+    }
+
+    function handleUploadFile(nextFile: File | null) {
+        if (!nextFile) return;
+
+        const ok = ["image/png", "image/jpeg", "image/webp"].includes(nextFile.type);
+        if (!ok) {
+            toast.error("Only PNG, JPG, WEBP supported");
+            return;
+        }
+
+        selectUploadFile(nextFile);
+    }
 
     function reset() {
         setMode(defaultMode);
         setSelectedFileName("");
-        setFile(null);
+        selectUploadFile(null);
         setUploading(false);
         setProgress({ percent: 0, status: "idle" });
     }
@@ -491,32 +538,19 @@ function UploadNewVersionDialog({
                             onDrop={(e) => {
                                 e.preventDefault();
                                 const f = e.dataTransfer.files?.[0];
-                                if (!f) return;
-
-                                const ok = ["image/png", "image/jpeg", "image/webp"].includes(f.type);
-                                if (!ok) {
-                                    toast.error("Only PNG, JPG, WEBP supported");
-                                    return;
-                                }
-                                setFile(f);
+                                handleUploadFile(f ?? null);
                             }}
                         >
                             <CardContent className="p-4 space-y-3">
                                 <input
+                                    ref={fileInputRef}
                                     id="ticket-upload-input"
                                     type="file"
                                     accept="image/png,image/jpeg,image/webp"
                                     className="hidden"
                                     onChange={(e) => {
                                         const f = e.target.files?.[0] ?? null;
-                                        if (!f) return;
-
-                                        const ok = ["image/png", "image/jpeg", "image/webp"].includes(f.type);
-                                        if (!ok) {
-                                            toast.error("Only PNG, JPG, WEBP supported");
-                                            return;
-                                        }
-                                        setFile(f);
+                                        handleUploadFile(f);
                                     }}
                                 />
 
@@ -533,7 +567,7 @@ function UploadNewVersionDialog({
                                             type="button"
                                             variant="outline"
                                             disabled={uploading}
-                                            onClick={() => document.getElementById("ticket-upload-input")?.click()}
+                                            onClick={openFilePicker}
                                         >
                                             Choose file
                                         </Button>
@@ -555,7 +589,7 @@ function UploadNewVersionDialog({
                                                 variant="outline"
                                                 size="sm"
                                                 disabled={uploading}
-                                                onClick={() => document.getElementById("ticket-upload-input")?.click()}
+                                                onClick={openFilePicker}
                                             >
                                                 Replace
                                             </Button>
@@ -564,7 +598,7 @@ function UploadNewVersionDialog({
                                                 variant="ghost"
                                                 size="sm"
                                                 disabled={uploading}
-                                                onClick={() => setFile(null)}
+                                                onClick={() => selectUploadFile(null)}
                                             >
                                                 Remove
                                             </Button>

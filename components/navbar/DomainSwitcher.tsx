@@ -27,7 +27,14 @@ export function DomainSwitcher({ me, className }: Props) {
       <SelectTrigger className={className ?? "w-full"}>
         <SelectValue placeholder="Select review domain" />
       </SelectTrigger>
-      <SelectContent align="end">
+      <SelectContent
+        align="end"
+        side="bottom"
+        sideOffset={8}
+        position="popper"
+        collisionPadding={12}
+        className="z-[100] min-w-[220px]"
+      >
         {allowedDomains.map((domain) => (
           <SelectItem key={domain} value={domain}>
             {DOMAIN_LABELS[domain]}

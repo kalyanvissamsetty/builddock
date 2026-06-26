@@ -202,8 +202,8 @@ export default function GraphicProjectsPage() {
     }
 
     return (
-        <div className="w-full space-y-10">
-            <div className="flex flex-col gap-3  pb-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="w-full">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="text-2xl font-semibold">Graphics Projects</h1>
                 </div>
@@ -213,13 +213,11 @@ export default function GraphicProjectsPage() {
                 </Button>
             </div>
 
-            <div
-                className="grid w-full py-10"
-                style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 30rem), 1fr))" }}
-            >
-                <div className="min-w-0 pb-8 md:pb-0" style={{ paddingRight: "16px" }}>
-                <Card className="h-full min-w-0">
-                        <CardHeader className="pb-3">
+            <div className="flex flex-col gap-12" style={{ marginTop: 40 }}>
+                <div className="grid w-full grid-cols-1 gap-10 lg:grid-cols-2">
+                    <div className="min-w-0">
+                        <Card className="h-full min-w-0">
+                        <CardHeader className="pb-8">
                             <CardTitle className="flex items-center gap-2">
                                 <FolderPlus className="h-5 w-5" />
                                 Create Project
@@ -227,8 +225,8 @@ export default function GraphicProjectsPage() {
                             <CardDescription>Use this for a project that starts in Graphics.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <form onSubmit={createGraphicProject} className="space-y-4">
-                                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                            <form onSubmit={createGraphicProject} className="space-y-8">
+                                <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
                                     <div className="space-y-2">
                                         <div className="flex min-h-6 items-center">
                                             <Label>Project name</Label>
@@ -272,12 +270,12 @@ export default function GraphicProjectsPage() {
                                 </Button>
                             </form>
                         </CardContent>
-                    </Card>
-                </div>
+                        </Card>
+                    </div>
 
-                <div className="min-w-0" style={{ paddingLeft: "16px" }}>
-                    <Card className="h-full min-w-0">
-                        <CardHeader className="pb-3">
+                    <div className="min-w-0">
+                        <Card className="h-full min-w-0">
+                        <CardHeader className="pb-8">
                             <CardTitle className="flex items-center gap-2">
                                 <ArrowDownToLine className="h-5 w-5" />
                                 Import Existing Project
@@ -285,7 +283,7 @@ export default function GraphicProjectsPage() {
                             <CardDescription>Use this when a WebGL project should also have Graphics tickets.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                            <div className="grid gap-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
                                 <Combobox
                                     items={importCandidates}
                                     value={selectedImportProject}
@@ -325,12 +323,12 @@ export default function GraphicProjectsPage() {
                                 </Button>
                             </div>
                         </CardContent>
-                    </Card>
+                        </Card>
+                    </div>
                 </div>
-            </div>
 
                 <Card className="min-h-[460px]">
-                    <CardHeader className="pb-3">
+                    <CardHeader className="pb-8">
                         <CardTitle>Graphics Project List</CardTitle>
                         <CardDescription>{graphicProjects.length} projects available for tickets and access control.</CardDescription>
                     </CardHeader>
@@ -371,6 +369,7 @@ export default function GraphicProjectsPage() {
                         </ScrollArea>
                     </CardContent>
                 </Card>
+            </div>
             <AlertDialog open={Boolean(deleteProject)} onOpenChange={(open) => !open && !deleting && setDeleteProject(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>

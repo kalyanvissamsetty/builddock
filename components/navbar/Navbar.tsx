@@ -41,8 +41,8 @@ export function Navbar({ me }: Props) {
         </div>
 
         {me.id && (
-          <div className="flex items-center gap-3">
-            <DomainSwitcher me={me} className="w-[220px]" />
+          <div className="flex min-w-0 items-center gap-3">
+            <DomainSwitcher me={me} className="w-[min(220px,42vw)]" />
             {/* <Button
               variant="outline"
               onClick={() => router.push("/profile")}

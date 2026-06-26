@@ -28,7 +28,7 @@ export function AssignedBuildsList({
 
   return (
     <div className="space-y-3">
-      <h2 className="text-lg font-medium underline">Assigned Builds List</h2>
+      <h2 className="text-lg font-medium">Assigned Builds List</h2>
 
       <ScrollArea className="h-72 rounded border p-3">
         {builds.length === 0 ? (

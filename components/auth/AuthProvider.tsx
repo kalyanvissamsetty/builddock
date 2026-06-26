@@ -67,20 +67,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       setLoading(true);
 
-      // Only attempt /me if we have a hint (reduces noise on login page)
-      let hasHint = false;
-      try {
-        hasHint = localStorage.getItem("bd_has_session") === "1";
-      } catch { }
-
-      if (!hasHint) {
-        if (mounted) {
-          setMe(null);
-          setLoading(false);
-        }
-        return;
-      }
-
+      // Cookies are httpOnly, so localStorage is only a hint. Always ask the
+      // backend once; apiFetch will silently refresh a valid refresh cookie.
       await refreshMe();
       if (mounted) setLoading(false);
     })();

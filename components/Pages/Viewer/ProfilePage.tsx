@@ -70,13 +70,13 @@ function PasswordInput({
                     value={value}
                     onChange={(e) => onChange(sanitizePasswordInput(e.target.value))}
                     placeholder={placeholder}
-                    className="pr-10"
+                    className="pr-16"
                 />
 
                 <button
                     type="button"
                     onClick={() => setShow((prev) => !prev)}
-                    className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground"
+                    className="absolute inset-y-0 right-8 flex items-center text-muted-foreground hover:text-foreground"
                 >
                     {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>

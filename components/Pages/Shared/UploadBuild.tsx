@@ -79,6 +79,17 @@ export function UploadBuild() {
     setIsUploading(false);
   }
 
+  function handleFileChange(newFile: File | null) {
+    setFile(newFile);
+    setHasUploadFailed(false);
+    setError(null);
+    setProgressEvent(null);
+    if (!newFile) {
+      cleanupSse();
+      setIsUploading(false);
+    }
+  }
+
   useEffect(() => {
     refreshProjects().catch(console.error);
     return () => cleanupSse();
@@ -269,11 +280,7 @@ export function UploadBuild() {
 
         <FileDropzone
           file={file}
-          onChange={(newFile) => {
-            setFile(newFile);
-            setHasUploadFailed(false);
-            setError(null);
-          }}
+          onChange={handleFileChange}
         />
 
         <UploadProgressPanel

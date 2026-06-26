@@ -122,7 +122,7 @@ export default function SignupPage() {
                     value={password}
                     onChange={(e) => setPassword(sanitizePasswordInput(e.target.value))}
                     required
-                    className="pr-10"
+                    className="pr-16"
                     data-ms-editor="false"
                     placeholder="Enter your password"
                   />
@@ -130,7 +130,7 @@ export default function SignupPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute right-8 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     aria-label={showPassword ? "Hide password" : "Show password"}
                     disabled={!password}
                   >

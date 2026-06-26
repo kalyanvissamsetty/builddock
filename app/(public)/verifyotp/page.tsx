@@ -292,6 +292,7 @@ function VerifyOtpForm() {
               onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
               placeholder="Enter OTP"
               maxLength={6}
+              clearable={false}
               className="pr-10"
               disabled={loading}
             />
@@ -300,8 +301,9 @@ function VerifyOtpForm() {
               <TooltipTrigger asChild>
                 <button
                   type="button"
+                  aria-label="Paste OTP"
                   onClick={handlePaste}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-3 top-1/2 inline-flex size-5 -translate-y-1/2 items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-50"
                   disabled={loading}
                 >
                   <Clipboard size={16} />

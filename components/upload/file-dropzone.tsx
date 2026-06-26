@@ -75,6 +75,7 @@ export function FileDropzone({ file, onChange, error }: Props) {
       {file && (
         <div className="relative mt-4 rounded-md bg-muted p-3">
           <Button
+            type="button"
             size="icon"
             variant="ghost"
             className="absolute right-1 top-1"

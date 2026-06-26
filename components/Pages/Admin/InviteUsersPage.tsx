@@ -94,10 +94,18 @@ export default function InviteUsersPage() {
 
     const [bulkReport, setBulkReport] = React.useState<null | {
         requested: number;
+        requestedTotal?: number;
+        mailAttempts?: number;
         sent: number;
         failed: number;
         blockedAlreadyVerified?: number;
         blockedAlreadyVerifiedEmails?: string[];
+        blockedAlreadyAccepted?: number;
+        blockedAlreadyAcceptedEmails?: string[];
+        blockedAlreadyPending?: number;
+        blockedAlreadyPendingEmails?: string[];
+        resentExpired?: number;
+        resentExpiredEmails?: string[];
         results: { email: string; ok: boolean; status?: any; message?: any }[];
     }>(null);
 
@@ -263,8 +271,10 @@ export default function InviteUsersPage() {
             const result = resp?.result;
             if (result) {
                 setBulkReport(result);
-                const blocked = result.blockedAlreadyVerified ?? 0;
-                toast.success(`Requested: ${result.requested}, Sent: ${result.sent}, Failed: ${result.failed}, Blocked: ${blocked}`);
+                const requestedTotal = result.requestedTotal ?? result.requested;
+                const skippedPending = result.blockedAlreadyPending ?? 0;
+                const skippedVerified = result.blockedAlreadyVerified ?? 0;
+                toast.success(`Requested: ${requestedTotal}, Sent: ${result.sent}, Failed: ${result.failed}, Already invited: ${skippedPending}, Already verified: ${skippedVerified}`);
                 
             } else {
                 setBulkReport(null);
@@ -369,12 +379,29 @@ export default function InviteUsersPage() {
                                                 <div className="flex items-center justify-between">
                                                     <p className="text-sm font-medium">Bulk Invite Report</p>
                                                     <Badge variant="secondary">
-                                                        Sent {bulkReport.sent} / {bulkReport.requested}
+                                                        Sent {bulkReport.sent} / {bulkReport.requestedTotal ?? bulkReport.requested}
                                                     </Badge>
                                                 </div>
 
                                                 <div className="text-xs text-muted-foreground">
-                                                    Failed: <span className="text-foreground">{bulkReport.failed}</span>
+                                                    Mail attempts: <span className="text-foreground">{bulkReport.mailAttempts ?? bulkReport.requested}</span>
+                                                    {" "}• Sent: <span className="text-foreground">{bulkReport.sent}</span>
+                                                    {" "}• Failed: <span className="text-foreground">{bulkReport.failed}</span>
+                                                    {typeof bulkReport.resentExpired === "number" && (
+                                                        <>
+                                                            {" "}• Expired resent: <span className="text-foreground">{bulkReport.resentExpired}</span>
+                                                        </>
+                                                    )}
+                                                    {typeof bulkReport.blockedAlreadyPending === "number" && (
+                                                        <>
+                                                            {" "}• Already invited: <span className="text-foreground">{bulkReport.blockedAlreadyPending}</span>
+                                                        </>
+                                                    )}
+                                                    {typeof bulkReport.blockedAlreadyAccepted === "number" && (
+                                                        <>
+                                                            {" "}• Accepted: <span className="text-foreground">{bulkReport.blockedAlreadyAccepted}</span>
+                                                        </>
+                                                    )}
                                                     {typeof bulkReport.blockedAlreadyVerified === "number" && (
                                                         <>
                                                             {" "}• Already verified: <span className="text-foreground">{bulkReport.blockedAlreadyVerified}</span>
@@ -382,33 +409,64 @@ export default function InviteUsersPage() {
                                                     )}
                                                 </div>
 
+                                                {bulkReport.blockedAlreadyPendingEmails && bulkReport.blockedAlreadyPendingEmails.length > 0 && (
+                                                    <div className="rounded-md bg-muted/40 p-2 text-xs text-muted-foreground">
+                                                        <p className="font-medium text-foreground">Skipped active invites</p>
+                                                        <p>No email was sent because these users already have pending invites that have not expired.</p>
+                                                        <p className="mt-1 break-words">{bulkReport.blockedAlreadyPendingEmails.join(", ")}</p>
+                                                    </div>
+                                                )}
+
+                                                {bulkReport.resentExpiredEmails && bulkReport.resentExpiredEmails.length > 0 && (
+                                                    <div className="rounded-md bg-muted/40 p-2 text-xs text-muted-foreground">
+                                                        <p className="font-medium text-foreground">Expired invites resent</p>
+                                                        <p>These users had expired invites, so a fresh invite email was sent.</p>
+                                                        <p className="mt-1 break-words">{bulkReport.resentExpiredEmails.join(", ")}</p>
+                                                    </div>
+                                                )}
+
+                                                {bulkReport.blockedAlreadyAcceptedEmails && bulkReport.blockedAlreadyAcceptedEmails.length > 0 && (
+                                                    <div className="rounded-md bg-muted/40 p-2 text-xs text-muted-foreground">
+                                                        <p className="font-medium text-foreground">Skipped accepted invites</p>
+                                                        <p>No email was sent because these invites are already accepted.</p>
+                                                        <p className="mt-1 break-words">{bulkReport.blockedAlreadyAcceptedEmails.join(", ")}</p>
+                                                    </div>
+                                                )}
+
                                                 {bulkReport.blockedAlreadyVerifiedEmails && bulkReport.blockedAlreadyVerifiedEmails.length > 0 && (
                                                     <div className="rounded-md bg-muted/40 p-2 text-xs text-muted-foreground">
                                                         <p className="font-medium text-foreground">Skipped verified users</p>
-                                                        <p className="break-words">{bulkReport.blockedAlreadyVerifiedEmails.join(", ")}</p>
+                                                        <p>No email was sent because these users already have access to this domain.</p>
+                                                        <p className="mt-1 break-words">{bulkReport.blockedAlreadyVerifiedEmails.join(", ")}</p>
                                                     </div>
                                                 )}
 
                                                 <ScrollArea className="h-40 pr-3">
-                                                    <div className="space-y-2">
-                                                        {bulkReport.results.map((r) => (
-                                                            <div key={r.email} className="flex items-start justify-between gap-3 rounded-md border p-2">
-                                                                <div className="min-w-0">
-                                                                    <p className="text-sm font-medium truncate">{r.email}</p>
-                                                                    {!r.ok && (
-                                                                        <p className="text-xs text-muted-foreground">
-                                                                            {r.status ? `Status: ${r.status} ` : ""}
-                                                                            {r.message ? `• ${r.message}` : ""}
-                                                                        </p>
-                                                                    )}
-                                                                </div>
+                                                    {bulkReport.results.length === 0 ? (
+                                                        <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                                                            No invite emails were attempted for this batch.
+                                                        </div>
+                                                    ) : (
+                                                        <div className="space-y-2">
+                                                            {bulkReport.results.map((r) => (
+                                                                <div key={r.email} className="flex items-start justify-between gap-3 rounded-md border p-2">
+                                                                    <div className="min-w-0">
+                                                                        <p className="text-sm font-medium truncate">{r.email}</p>
+                                                                        {!r.ok && (
+                                                                            <p className="text-xs text-muted-foreground">
+                                                                                {r.status ? `Status: ${r.status} ` : ""}
+                                                                                {r.message ? `• ${r.message}` : ""}
+                                                                            </p>
+                                                                        )}
+                                                                    </div>
 
-                                                                <Badge variant={r.ok ? "secondary" : "outline"}>
-                                                                    {r.ok ? "SENT" : "FAILED"}
-                                                                </Badge>
-                                                            </div>
-                                                        ))}
-                                                    </div>
+                                                                    <Badge variant={r.ok ? "secondary" : "outline"}>
+                                                                        {r.ok ? "SENT" : "FAILED"}
+                                                                    </Badge>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </ScrollArea>
 
                                                 <div className="flex items-center justify-end gap-2">

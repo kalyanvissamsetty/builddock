@@ -5,7 +5,7 @@ export type NavItem = {
   label: string;
   href: string;
   domain?: ReviewDomain | "ALL";
-  children? : NavItem[]
+  children?: NavItem[]
 };
 
 export const NAV_ITEMS: NavItem[] = [
@@ -19,23 +19,7 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/vieweraccess",
     domain: "WEBGL",
   },
-  {
-    label: "Builds",
-    href: "/builds",
-    domain: "WEBGL",
-    children: [
-      {
-        label: "Upload Build",
-        href: "/uploadbuild",
-        domain: "WEBGL",
-      },
-      {
-        label: "Delete Build",
-        href: "/deletebuild",
-        domain: "WEBGL",
-      },
-    ],
-  },
+  
   {
     label: "User Management",
     href: "/users",
@@ -69,38 +53,55 @@ export const NAV_ITEMS: NavItem[] = [
     domain: "WEBGL",
   },
   {
-        label: "Graphics Projects",
-        href: "/graphicprojects",
-        domain: "GRAPHICS",
+    label: "Builds",
+    href: "/builds",
+    domain: "WEBGL",
+    children: [
+      {
+        label: "Upload Build",
+        href: "/uploadbuild",
+        domain: "WEBGL",
       },
       {
-        label: "Assign Tickets",
-        href: "/assigntickets",
-        domain: "GRAPHICS",
+        label: "Delete Build",
+        href: "/deletebuild",
+        domain: "WEBGL",
       },
-      {
-        label: "Add Email Domain",
-        href: "/addemaildomain",
-        domain: "GRAPHICS",
-      },
-      {
-        label: "Add Graphics Users",
-        href: "/addusers",
-        domain: "GRAPHICS",
-      },
-      {
-        label: "Promote & Delete Users",
-        href: "/promoteusers",
-        domain: "GRAPHICS",
-      },
-      {
-        label: "Create Ticket",
-        href: "/createticket",
-        domain: "GRAPHICS",
-      },
-      {
-        label: "View Tickets",
-        href: "/viewtickets",
-        domain: "GRAPHICS",
-      },
+    ],
+  },
+  {
+    label: "Graphics Projects",
+    href: "/graphicprojects",
+    domain: "GRAPHICS",
+  },
+  {
+    label: "Assign Tickets",
+    href: "/assigntickets",
+    domain: "GRAPHICS",
+  },
+  {
+    label: "Add Email Domain",
+    href: "/addemaildomain",
+    domain: "GRAPHICS",
+  },
+  {
+    label: "Add Graphics Users",
+    href: "/addusers",
+    domain: "GRAPHICS",
+  },
+  {
+    label: "Promote & Delete Users",
+    href: "/promoteusers",
+    domain: "GRAPHICS",
+  },
+  {
+    label: "Create Ticket",
+    href: "/createticket",
+    domain: "GRAPHICS",
+  },
+  {
+    label: "View Tickets",
+    href: "/viewtickets",
+    domain: "GRAPHICS",
+  },
 ];
