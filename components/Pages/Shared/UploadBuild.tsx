@@ -9,7 +9,6 @@ import { apiFetch, getApiBase } from "../../lib/api";
 import { VersionSelect } from "../../upload/version-select";
 import { UploadSuccess } from "../../upload/dialog/UploadSuccess";
 import { Project, Environment, Version, UploadBuildResponse } from "@/types";
-import { Textarea } from "@/components/ui/textarea";
 import { UploadProgressPanel, UploadSseEvent } from "./UploadProgressPanel";
 
 
@@ -17,7 +16,6 @@ export function UploadBuild() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [envs, setEnvs] = useState<Environment[]>([]);
   const [versions, setVersions] = useState<Version[]>([]);
-  const [releaseNotes, setReleaseNotes] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [selectedEnvId, setSelectedEnvId] = useState<number | null>(null);
   const [selectedVersionId, setSelectedVersionId] = useState<number | null>(null);
@@ -72,7 +70,6 @@ export function UploadBuild() {
     setSelectedVersionId(null);
     setEnvs([]);
     setVersions([]);
-    setReleaseNotes("");
     setFile(null);
     setError(null);
     setProgressEvent(null);
@@ -173,8 +170,7 @@ export function UploadBuild() {
       !selectedEnvId ||
       !selectedProjectId ||
       !selectedVersionId ||
-      !file ||
-      !releaseNotes
+      !file
     ) {
       setError("All fields are required");
       return;
@@ -188,7 +184,6 @@ export function UploadBuild() {
     formData.append("projectId", selectedProjectId.toString());
     formData.append("environmentId", selectedEnvId.toString());
     formData.append("versionId", selectedVersionId.toString());
-    formData.append("releaseNotes", releaseNotes);
     formData.append("uploadId", uploadId);
 
     try {
@@ -205,7 +200,6 @@ export function UploadBuild() {
         body: formData,
       });
 
-      setReleaseNotes("");
       setBuildActivated(data.isThisVersionDefault);
       setSuccessDialog(true);
       setProgressEvent({
@@ -271,13 +265,6 @@ export function UploadBuild() {
 
         {error && <p className="text-sm text-destructive">{error}</p>}
 
-        <Textarea
-          value={releaseNotes}
-          onChange={(e) => setReleaseNotes(e.target.value)}
-          placeholder="Release notes for this upload..."
-          className="min-h-[120px] max-w-[500px]"
-        />
-
         <FileDropzone
           file={file}
           onChange={handleFileChange}
@@ -296,8 +283,7 @@ export function UploadBuild() {
               !selectedProjectId ||
               !selectedEnvId ||
               !selectedVersionId ||
-              !file ||
-              !releaseNotes
+              !file
             }
           >
             {isUploading ? "Uploading..." : hasUploadFailed ? "Retry Upload" : "Upload Build"}

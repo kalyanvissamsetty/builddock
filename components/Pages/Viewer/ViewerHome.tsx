@@ -1,78 +1,26 @@
 "use client";
 
 import { AssignedBuild } from "../../../types";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { apiFetch, getApiBase } from "@/components/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/auth/useAuth";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 
 type ExtendedAssignedBuild = AssignedBuild & {
   // optional fields from backend (safe if not present)
   version: AssignedBuild["version"] & {
-    releaseNotes?: string | null;
-    releaseNotesUpdatedAt?: string | null;
-
     lastUploadedAt?: string | null;
     lastUploadedByUser?: { name?: string | null; email: string } | null;
   };
 };
 
-
-
-function getTimeZoneInfo() {
-  try {
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-    const parts = new Intl.DateTimeFormat(undefined, {
-      timeZone: tz,
-      timeZoneName: "short",
-    }).formatToParts(new Date());
-
-    const tzShort = parts.find((p) => p.type === "timeZoneName")?.value || tz;
-
-    return { tz, tzShort };
-  } catch {
-    return { tz: "UTC", tzShort: "UTC" };
-  }
-}
-
-function formatLocalDateTime(iso: string) {
-  try {
-    const { tz, tzShort } = getTimeZoneInfo();
-    const d = new Date(iso);
-
-    const formatted = new Intl.DateTimeFormat(undefined, {
-      timeZone: tz,
-      year: "numeric",
-      month: "short",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    }).format(d);
-
-    return `${formatted} (${tzShort})`;
-  } catch {
-    return iso;
-  }
-}
-
 export default function ViewerHome() {
   const [builds, setBuilds] = useState<ExtendedAssignedBuild[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [copiedId, setCopiedId] = useState<number | null>(null);
   const { me } = useAuth();
 
   useEffect(() => {
@@ -98,14 +46,6 @@ export default function ViewerHome() {
       setLoading(false);
     }
   }
-
-  async function copyToClipboard(url: string, id: number) {
-    await navigator.clipboard.writeText(url);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-  }
-
-  const tzInfo = useMemo(() => getTimeZoneInfo(), []);
 
   if (loading) {
     return (
@@ -141,21 +81,6 @@ export default function ViewerHome() {
           const publicUrl = `/public/${projectSlug}/${envSlug}/${version}`;
           const backendUrl = `${getApiBase()}${publicUrl}`;
 
-          const uploadedAtIso =
-            b.version.lastUploadedAt || b.version.releaseNotesUpdatedAt || null;
-
-          const uploadedAtText = uploadedAtIso
-            ? formatLocalDateTime(uploadedAtIso)
-            : "Not available";
-
-          const uploadedBy =
-            b.version.lastUploadedByUser?.name?.trim() ||
-            b.version.lastUploadedByUser?.email ||
-            "Not available";
-
-          const releaseNotesText =
-            (b.version.releaseNotes ?? "").trim() || "No release notes provided.";
-
           return (
             <Card
               key={b.id}
@@ -186,45 +111,6 @@ export default function ViewerHome() {
                   >
                     Open Build
                   </Button>
-
-                  {/* <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => copyToClipboard(backendUrl, b.id)}
-                  >
-                    {copiedId === b.id ? "Copied!" : "Copy URL"}
-                  </Button> */}
-
-                  {/* <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="secondary" className="w-full">
-                        Release Notes
-                      </Button>
-                    </DialogTrigger>
-
-                    <DialogContent className="max-w-lg">
-                      <DialogHeader>
-                        <DialogTitle>Release Notes</DialogTitle>
-                        <div className="text-xs text-muted-foreground pt-1 space-y-1">
-                          
-                          <div>
-                            Uploaded on:{" "}
-                            <span className="text-foreground">{uploadedAtText}</span>
-                          </div>
-                          <div>
-                            Uploaded by:{" "}
-                            <span className="text-foreground">{uploadedBy}</span>
-                          </div>
-                        </div>
-                      </DialogHeader>
-
-                      <ScrollArea className="max-h-[420px] pr-3">
-                        <div className="whitespace-pre-wrap text-sm text-muted-foreground">
-                          {releaseNotesText}
-                        </div>
-                      </ScrollArea>
-                    </DialogContent>
-                  </Dialog> */}
                 </div>
               </CardContent>
             </Card>

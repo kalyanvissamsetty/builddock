@@ -13,7 +13,6 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
 } from "@/components/ui/dialog";
 import {
     Select,
@@ -44,8 +43,6 @@ type BuildRow = {
     name: string; // version name
     isActive: boolean;
     s3Path: string;
-    releaseNotes?: string | null;
-    releaseNotesUpdatedAt?: string | null;
     lastUploadedAt?: string | null;
     lastUploadedByUser?: Uploader | null;
     environment: {
@@ -67,42 +64,6 @@ type UserRow = {
     role: string;
 };
 
-
-function getTimeZoneInfo() {
-    try {
-        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-        const parts = new Intl.DateTimeFormat(undefined, {
-            timeZone: tz,
-            timeZoneName: "shortOffset",
-        }).formatToParts(new Date());
-
-        const offset = parts.find((p) => p.type === "timeZoneName")?.value || tz;
-        return { tz, offset };
-    } catch {
-        return { tz: "UTC", offset: "UTC" };
-    }
-}
-
-function formatLocalDateTime(iso?: string | null) {
-    if (!iso) return "Not available";
-    try {
-        const { tz, offset } = getTimeZoneInfo();
-        const d = new Date(iso);
-        const formatted = new Intl.DateTimeFormat(undefined, {
-            timeZone: tz,
-            year: "numeric",
-            month: "short",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-        }).format(d);
-        return `${formatted} (${offset})`;
-    } catch {
-        return iso;
-    }
-}
-
 export default function AllBuilds() {
     const [rows, setRows] = useState<BuildRow[]>([]);
     const [loading, setLoading] = useState(true);
@@ -113,7 +74,6 @@ export default function AllBuilds() {
     const [envFilter, setEnvFilter] = useState<string>("ALL");
     const [sort, setSort] = useState<"NEWEST" | "OLDEST">("NEWEST");
 
-    const [copiedId, setCopiedId] = useState<number | null>(null);
     const [bulkResult, setBulkResult] = useState<any>(null);
     const [assignOpen, setAssignOpen] = useState(false);
     const [assignVersion, setAssignVersion] = useState<BuildRow | null>(null);
@@ -169,12 +129,6 @@ export default function AllBuilds() {
         }
     }
 
-    async function copy(url: string, id: number) {
-        await navigator.clipboard.writeText(url);
-        setCopiedId(id);
-        setTimeout(() => setCopiedId(null), 2000);
-    }
-
     const projects = useMemo(() => {
         const map = new Map<string, string>();
         rows.forEach((r) => map.set(r.environment.project.slug, r.environment.project.name));
@@ -214,8 +168,8 @@ export default function AllBuilds() {
         });
 
         list = list.sort((a, b) => {
-            const aTime = new Date(a.lastUploadedAt || a.releaseNotesUpdatedAt || 0).getTime() || 0;
-            const bTime = new Date(b.lastUploadedAt || b.releaseNotesUpdatedAt || 0).getTime() || 0;
+            const aTime = new Date(a.lastUploadedAt || 0).getTime() || 0;
+            const bTime = new Date(b.lastUploadedAt || 0).getTime() || 0;
             if (sort === "NEWEST") return bTime - aTime;
             return aTime - bTime;
         });
@@ -385,12 +339,6 @@ export default function AllBuilds() {
                         const publicUrl = `/public/${projectSlug}/${envSlug}/${version}`;
                         const backendUrl = `${getApiBase()}${publicUrl}`;
 
-                        const uploadedAt = formatLocalDateTime(r.lastUploadedAt || r.releaseNotesUpdatedAt);
-                        const uploadedBy =
-                            r.lastUploadedByUser?.name?.trim() || r.lastUploadedByUser?.email || "Not available";
-
-                        const notes = (r.releaseNotes || "").trim() || "No release notes provided.";
-
                         return (
                             <Card key={r.id} className="flex flex-col justify-between hover:shadow-lg transition">
                                 <CardHeader className="space-y-2">
@@ -421,38 +369,6 @@ export default function AllBuilds() {
                                         <Button className="w-full" onClick={() => window.open(backendUrl, "_blank")}>
                                             Open Build
                                         </Button>
-
-                                        {/* <Button variant="outline" className="w-full" onClick={() => copy(backendUrl, r.id)}>
-                                            {copiedId === r.id ? "Copied!" : "Copy URL"}
-                                        </Button> */}
-
-                                        {/* <Dialog>
-                                            <DialogTrigger asChild>
-                                                <Button variant="secondary" className="w-full">
-                                                    Release Notes
-                                                </Button>
-                                            </DialogTrigger>
-
-                                            <DialogContent className="max-w-lg">
-                                                <DialogHeader>
-                                                    <DialogTitle>Release Notes</DialogTitle>
-                                                    <div className="text-xs text-muted-foreground pt-1 space-y-1">
-                                                        <div>
-                                                            Uploaded on: <span className="text-foreground">{uploadedAt}</span>
-                                                        </div>
-                                                        <div>
-                                                            Uploaded by: <span className="text-foreground">{uploadedBy}</span>
-                                                        </div>
-                                                    </div>
-                                                </DialogHeader>
-
-                                                <ScrollArea className="max-h-[420px] pr-3">
-                                                    <div className="whitespace-pre-wrap text-md text-muted-foreground">
-                                                        {notes}
-                                                    </div>
-                                                </ScrollArea>
-                                            </DialogContent>
-                                        </Dialog> */}
                                     </div>
                                 </CardContent>
                             </Card>
