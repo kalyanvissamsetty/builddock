@@ -271,14 +271,11 @@ export default function InviteUsersPage() {
             const result = resp?.result;
             if (result) {
                 setBulkReport(result);
-                const requestedTotal = result.requestedTotal ?? result.requested;
-                const skippedPending = result.blockedAlreadyPending ?? 0;
-                const skippedVerified = result.blockedAlreadyVerified ?? 0;
-                toast.success(`Requested: ${requestedTotal}, Sent: ${result.sent}, Failed: ${result.failed}, Already invited: ${skippedPending}, Already verified: ${skippedVerified}`);
+                toast.success("Report generated");
                 
             } else {
                 setBulkReport(null);
-                toast.success("Invites processed");
+                toast.success("Report generated");
             }
             
             // reset input box but keep role
@@ -352,6 +349,7 @@ export default function InviteUsersPage() {
                                                 placeholder={`user1@domain.com\nuser2@domain.com\nuser3@domain.com`}
                                                 disabled={sending}
                                                 rows={autoRows(emailsText)}
+                                                clearable={false}
                                                 className="resize-none"
                                             />
 
@@ -376,37 +374,11 @@ export default function InviteUsersPage() {
 
                                         {bulkReport && (
                                             <div className="mt-4 rounded-md border p-3 space-y-3">
-                                                <div className="flex items-center justify-between">
+                                                <div>
                                                     <p className="text-sm font-medium">Bulk Invite Report</p>
-                                                    <Badge variant="secondary">
-                                                        Sent {bulkReport.sent} / {bulkReport.requestedTotal ?? bulkReport.requested}
-                                                    </Badge>
-                                                </div>
-
-                                                <div className="text-xs text-muted-foreground">
-                                                    Mail attempts: <span className="text-foreground">{bulkReport.mailAttempts ?? bulkReport.requested}</span>
-                                                    {" "}• Sent: <span className="text-foreground">{bulkReport.sent}</span>
-                                                    {" "}• Failed: <span className="text-foreground">{bulkReport.failed}</span>
-                                                    {typeof bulkReport.resentExpired === "number" && (
-                                                        <>
-                                                            {" "}• Expired resent: <span className="text-foreground">{bulkReport.resentExpired}</span>
-                                                        </>
-                                                    )}
-                                                    {typeof bulkReport.blockedAlreadyPending === "number" && (
-                                                        <>
-                                                            {" "}• Already invited: <span className="text-foreground">{bulkReport.blockedAlreadyPending}</span>
-                                                        </>
-                                                    )}
-                                                    {typeof bulkReport.blockedAlreadyAccepted === "number" && (
-                                                        <>
-                                                            {" "}• Accepted: <span className="text-foreground">{bulkReport.blockedAlreadyAccepted}</span>
-                                                        </>
-                                                    )}
-                                                    {typeof bulkReport.blockedAlreadyVerified === "number" && (
-                                                        <>
-                                                            {" "}• Already verified: <span className="text-foreground">{bulkReport.blockedAlreadyVerified}</span>
-                                                        </>
-                                                    )}
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Review the email-level result below.
+                                                    </p>
                                                 </div>
 
                                                 {bulkReport.blockedAlreadyPendingEmails && bulkReport.blockedAlreadyPendingEmails.length > 0 && (

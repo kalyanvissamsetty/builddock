@@ -145,7 +145,7 @@ export default function ManageEmailDomainsPage() {
             await apiFetch(`/api/admin/allowed-domains/${domainId}?${qs.toString()}`, {
                 method: "DELETE",
             });
-            toast.success(withUsers ? "Domain and VIEWERS deleted" : "Domain deleted, no VIEWERS got deleted");
+            toast.success(withUsers ? "Domain and related users deleted" : "Domain deleted, no users were deleted");
             await loadDomains();
         } catch (err: any) {
             toast.error(err?.message ?? "Failed to delete domain");
@@ -297,7 +297,7 @@ export default function ManageEmailDomainsPage() {
                                                                             <span className="block text-sm font-medium">Impact</span>
                                                                             <span className="mt-2 flex flex-wrap gap-2">
                                                                                 <Badge variant="outline">{summary.userCount}
-                                                                                    {summary.userCount === 1 ? " VIEWER" : " VIEWERS"}</Badge>
+                                                                                    {summary.userCount === 1 ? " USER" : " USERS"}</Badge>
                                                                                 <Badge variant="outline">{summary.inviteCount}
                                                                                     {summary.inviteCount === 1 ? " INVITE" : " INVITES"}</Badge>
                                                                             </span>
