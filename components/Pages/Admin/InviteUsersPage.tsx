@@ -51,6 +51,7 @@ type RoleOption = {
 };
 
 const LS_ROLE_KEY = "invite_selected_role";
+const MAX_EMAIL_LENGTH = 40;
 
 
 function parseEmails(text: string) {
@@ -72,6 +73,17 @@ function autoRows(text: string) {
 function isValidEmail(email: string) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
+
+function emailsOverLength(emails: string[]) {
+    return emails.filter((email) => email.length > MAX_EMAIL_LENGTH);
+}
+
+function hasLineOverEmailLength(text: string) {
+    return text
+        .split(/\r?\n/g)
+        .some((line) => line.trim().length > MAX_EMAIL_LENGTH);
+}
+
 export default function InviteUsersPage() {
     const { me } = useAuth();
     const { selectedDomain } = useSelectedDomain(me);
@@ -218,6 +230,8 @@ export default function InviteUsersPage() {
         if (emails.length === 0) return false;
         if (emails.length > 30) return false;
 
+        if (emailsOverLength(emails).length > 0) return false;
+
         // basic validation
         if (emails.some((e) => !isValidEmail(e))) return false;
 
@@ -243,6 +257,14 @@ export default function InviteUsersPage() {
 
         if (emails.length > 30) {
             toast.error("Max 30 emails at a time");
+            return;
+        }
+
+        const tooLongEmails = emailsOverLength(emails);
+        if (tooLongEmails.length > 0) {
+            toast.error(
+                `Each email must be ${MAX_EMAIL_LENGTH} characters or less: ${tooLongEmails.slice(0, 3).join(", ")}${tooLongEmails.length > 3 ? "..." : ""}`,
+            );
             return;
         }
 
@@ -345,7 +367,14 @@ export default function InviteUsersPage() {
 
                                             <Textarea
                                                 value={emailsText}
-                                                onChange={(e) => setEmailsText(e.target.value)}
+                                                onChange={(e) => {
+                                                    const nextValue = e.target.value;
+                                                    if (hasLineOverEmailLength(nextValue)) {
+                                                        toast.error(`Each email must be ${MAX_EMAIL_LENGTH} characters or less`);
+                                                        return;
+                                                    }
+                                                    setEmailsText(nextValue);
+                                                }}
                                                 placeholder={`user1@domain.com\nuser2@domain.com\nuser3@domain.com`}
                                                 disabled={sending}
                                                 rows={autoRows(emailsText)}
@@ -357,6 +386,8 @@ export default function InviteUsersPage() {
                                                 <span>{parseEmails(emailsText).length} / 30</span>
                                                 {parseEmails(emailsText).length > 30 ? (
                                                     <span className="text-destructive">Too many emails</span>
+                                                ) : emailsOverLength(parseEmails(emailsText).map((email) => email.toLowerCase())).length > 0 ? (
+                                                    <span className="text-destructive">Email max {MAX_EMAIL_LENGTH} characters</span>
                                                 ) : null}
                                             </div>
                                         </div>
