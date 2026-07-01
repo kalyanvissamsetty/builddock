@@ -8,8 +8,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/components/lib/api";
-import { useAuth } from "@/components/auth/useAuth";
-import { getDomainRole } from "@/components/auth/domain";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -72,19 +70,10 @@ function ClippedDescription({
 }
 
 export default function ViewTicketsPage() {
-    const { me } = useAuth();
-    const graphicsRole = me ? getDomainRole(me, "GRAPHICS") : null;
-    const canUpdateTicketStatus =
-        graphicsRole === "ADMIN" ||
-        graphicsRole === "MANAGER" ||
-        graphicsRole === "DESIGNER" ||
-        graphicsRole === "REVIEWER";
-
     const [projectId, setProjectId] = React.useState<string>("ALL");
     const [projects, setProjects] = React.useState<Project[]>([]);
     const [tickets, setTickets] = React.useState<Ticket[]>([]);
     const [loading, setLoading] = React.useState(true);
-    const [updatingTicketId, setUpdatingTicketId] = React.useState<number | null>(null);
     const [ticketToDelete, setTicketToDelete] = React.useState<Ticket | null>(null);
     const [deletingTicket, setDeletingTicket] = React.useState(false);
 
@@ -121,28 +110,6 @@ export default function ViewTicketsPage() {
         const pid = Number(projectId);
         return tickets.filter((t) => t.graphicData?.project?.id === pid);
     }, [projectId, tickets]);
-
-    async function updateTicketStatus(ticketId: number, status: GraphicTicketStatus) {
-        const current = tickets.find((ticket) => ticket.id === ticketId);
-        if (current?.status === status) return;
-
-        setUpdatingTicketId(ticketId);
-        try {
-            const updated = await apiFetch<Ticket>(`/api/graphics/tickets/${ticketId}`, {
-                method: "PATCH",
-                body: JSON.stringify({ status }),
-            });
-
-            setTickets((currentTickets) => currentTickets.map((ticket) => (
-                ticket.id === ticketId ? { ...ticket, status: updated.status ?? status } : ticket
-            )));
-            toast.success("Ticket status updated");
-        } catch (err: any) {
-            toast.error(err?.message ?? "Failed to update ticket status");
-        } finally {
-            setUpdatingTicketId(null);
-        }
-    }
 
     async function deleteTicket() {
         if (!ticketToDelete || deletingTicket) return;
@@ -206,51 +173,29 @@ export default function ViewTicketsPage() {
                     <p className="text-sm text-muted-foreground">No tickets found.</p>
                 ) : filtered.map((t) => {
                     const p = t.graphicData?.project ? projectById.get(t.graphicData.project.id) ?? t.graphicData.project : null;
-                    const canUpdateStatus = canUpdateTicketStatus && t.currentUserTicketAccess?.canView !== false;
                     return (
-                        <Card key={t.id} className="flex h-full flex-col hover:shadow-md transition">
-                            <CardHeader className="space-y-2">
-                                <div className="flex items-start justify-between gap-3">
-                                    <div className="min-w-0 space-y-1">
-                                        <CardTitle className="truncate text-base">{t.title}</CardTitle>
-                                        <CardDescription className="truncate">
-                                            {p?.name || "Unknown project"} • {new Date(t.createdAt).toLocaleDateString()}
-                                        </CardDescription>
-                                    </div>
-                                    {canUpdateStatus ? (
-                                        <Select
-                                            value={t.status ?? "OPEN"}
-                                            onValueChange={(value) => updateTicketStatus(t.id, value as GraphicTicketStatus)}
-                                            disabled={updatingTicketId === t.id}
-                                        >
-                                            <SelectTrigger className="h-8 w-[150px] shrink-0">
-                                                <SelectValue placeholder="Status" />
-                                            </SelectTrigger>
-                                            <SelectContent className="w-[var(--radix-select-trigger-width)]">
-                                                {TICKET_STATUSES.map((status) => (
-                                                    <SelectItem key={status.value} value={status.value}>
-                                                        {status.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    ) : (
-                                        <Badge variant="outline" className="shrink-0">
-                                            {statusLabel(t.status)}
-                                        </Badge>
-                                    )}
+                        <Card key={t.id} className="flex h-full min-h-[280px] flex-col hover:shadow-md transition">
+                            <CardHeader className="space-y-2 overflow-hidden">
+                                <div className="min-w-0 space-y-1">
+                                    <CardTitle className="truncate text-base">{t.title}</CardTitle>
+                                    <CardDescription className="truncate">
+                                        {p?.name || "Unknown project"} • {new Date(t.createdAt).toLocaleDateString()}
+                                    </CardDescription>
                                 </div>
                             </CardHeader>
-                            <CardContent className="flex flex-1 flex-col space-y-3">
-                                <ClippedDescription text={t.description} />
-                                <div className="flex items-center gap-2">
-                                    <Badge variant="secondary">{t._count?.graphics ?? 0} graphic(s)</Badge>
+                            <CardContent className="flex flex-1 flex-col">
+                                <div className="min-h-[72px]">
+                                    <ClippedDescription text={t.description} />
                                 </div>
-                                <div className="mt-auto flex gap-2 pt-1">
-                                    <Button asChild className="flex-1">
+                                <div className="h-8 shrink-0" aria-hidden="true" />
+                                <div className="mt-auto flex flex-wrap items-center gap-2 pb-3">
+                                    <Badge variant="secondary">{t._count?.graphics ?? 0} graphic(s)</Badge>
+                                    <Badge variant="outline">{statusLabel(t.status)}</Badge>
+                                </div>
+                                <div>
+                                    <Button asChild className="w-full min-w-0">
                                         <Link href={`/tickets/${t.id}`}>Open ticket</Link>
                                     </Button>
-                                    
                                 </div>
                             </CardContent>
                         </Card>

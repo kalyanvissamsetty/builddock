@@ -954,16 +954,18 @@ export default function TicketDetailsPage() {
 
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2">
                 {ticket.graphics.length === 0 ? (
-                    <Card className="sm:col-span-2">
-                        <CardContent className="flex min-h-52 items-center justify-center p-8 text-center">
-                            <div className="space-y-2">
-                                <p className="text-sm font-medium">No graphics to display</p>
-                                <p className="text-sm text-muted-foreground">
-                                    Upload a new graphic to start collecting versions and comments for this ticket.
-                                </p>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <div className="flex justify-center" style={{ gridColumn: "1 / -1" }}>
+                        <Card className="w-full max-w-3xl">
+                            <CardContent className="flex min-h-52 items-center justify-center p-8 text-center">
+                                <div className="space-y-2">
+                                    <p className="text-sm font-medium">No graphics to display</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        Upload a new graphic to start collecting versions and comments for this ticket.
+                                    </p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
                 ) : ticket.graphics.map((g) => (
                     <TicketGraphicCard
                         key={g.id}
