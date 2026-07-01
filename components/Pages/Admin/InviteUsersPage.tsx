@@ -500,17 +500,20 @@ export default function InviteUsersPage() {
                             ) : (
                                 <div className="space-y-2">
                                     {filteredInvites.map((inv) => (
-                                        <div key={inv.id} className="rounded-md border p-3">
-                                            <div className="flex items-start justify-between gap-3">
-                                                <div className="space-y-1">
-                                                    <p className="text-sm font-medium">
+                                        <div key={inv.id} className="min-w-0 overflow-hidden rounded-md border p-3">
+                                            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+                                                <div className="min-w-0 overflow-hidden space-y-1">
+                                                    <p
+                                                        className="block w-full truncate text-sm font-medium"
+                                                        title={inv.name ? `${inv.name} - ${inv.email}` : inv.email}
+                                                    >
                                                         {inv.name ? `${inv.name} - ${inv.email}` : inv.email}
                                                     </p>
-                                                    <p className="text-xs text-muted-foreground">
+                                                    <p className="block w-full truncate text-xs text-muted-foreground">
                                                         Role - {inv.role ?? "VIEWER"} | Status - {inv.status}
                                                     </p>
                                                 </div>
-                                                <Badge variant="outline">{inv.status}</Badge>
+                                                <Badge variant="outline" className="shrink-0">{inv.status}</Badge>
                                             </div>
                                         </div>
                                     ))}

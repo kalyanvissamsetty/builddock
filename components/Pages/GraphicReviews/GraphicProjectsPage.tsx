@@ -351,28 +351,34 @@ export default function GraphicProjectsPage() {
                             ) : graphicProjects.length === 0 ? (
                                 <p className="text-sm text-muted-foreground">No graphics projects yet.</p>
                             ) : (
-                                <div className="space-y-3">
+                                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
                                     {graphicProjects.map((project) => (
-                                        <div key={project.id} className="rounded-md border p-4">
-                                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                                <div className="min-w-0 space-y-1">
-                                                    <p className="font-medium">{project.name}</p>
-                                                    <p className="text-xs text-muted-foreground">{project.slug}</p>
+                                        <div key={project.id} className="flex min-h-[148px] min-w-0 flex-col overflow-hidden rounded-md border p-4">
+                                            <div className="min-w-0 flex-1 space-y-1">
+                                                <div className="min-w-0 overflow-hidden">
+                                                    <p className="block w-full truncate font-medium" title={project.name}>
+                                                        {project.name}
+                                                    </p>
+                                                    <p className="block w-full truncate text-xs text-muted-foreground" title={project.slug}>
+                                                        {project.slug}
+                                                    </p>
                                                 </div>
-                                                <div className="flex flex-wrap gap-2">
+                                            </div>
+                                            <div className="mt-4 flex min-w-0 shrink-0 items-center justify-between gap-2">
+                                                <div className="flex min-w-0 flex-wrap gap-2">
                                                     {project.webglData && <Badge variant="outline">WebGL</Badge>}
                                                     <Badge variant="secondary">Graphics</Badge>
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                                        aria-label={`Delete ${project.name}`}
-                                                        onClick={() => setDeleteProject(project)}
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
                                                 </div>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                                                    aria-label={`Delete ${project.name}`}
+                                                    onClick={() => setDeleteProject(project)}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
                                             </div>
                                         </div>
                                     ))}
