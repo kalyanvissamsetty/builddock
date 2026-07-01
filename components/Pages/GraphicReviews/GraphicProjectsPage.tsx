@@ -30,6 +30,7 @@ import {
     ComboboxItem,
     ComboboxList,
 } from "@/components/ui/combobox";
+import { isPathSafeSegment, pathSafeSegmentMessage } from "@/components/lib/nameValidation";
 
 type Project = {
     id: number;
@@ -130,6 +131,10 @@ export default function GraphicProjectsPage() {
             toast.error("Project name must be at least 2 characters");
             return;
         }
+        if (!isPathSafeSegment(slug)) {
+            toast.error(pathSafeSegmentMessage("Project slug"));
+            return;
+        }
         if (!projectSlug) {
             toast.error("Project slug is required");
             return;
@@ -148,6 +153,7 @@ export default function GraphicProjectsPage() {
             setGraphicProjects((current) => sortProjects([created, ...current.filter((project) => project.id !== created.id)]));
             setAllProjects((current) => sortProjects([created, ...current.filter((project) => project.id !== created.id)]));
             toast.success(created.webglData ? "Existing WebGL project added to Graphics" : "Graphics project created");
+            await loadProjects();
         } catch (err: any) {
             toast.error(err?.message ?? "Failed to create graphics project");
         } finally {
@@ -170,6 +176,7 @@ export default function GraphicProjectsPage() {
             setGraphicProjects((current) => sortProjects([imported, ...current.filter((p) => p.id !== imported.id)]));
             setAllProjects((current) => current.map((project) => (project.id === imported.id ? imported : project)));
             toast.success("Project imported to Graphics");
+            await loadProjects();
         } catch (err: any) {
             toast.error(err?.message ?? "Failed to import project");
         } finally {
@@ -194,6 +201,7 @@ export default function GraphicProjectsPage() {
             ));
             toast.success("Graphics project deleted");
             setDeleteProject(null);
+            await loadProjects();
         } catch (err: any) {
             toast.error(err?.message ?? "Failed to delete graphics project");
         } finally {
@@ -313,7 +321,6 @@ export default function GraphicProjectsPage() {
 
                                 <Button
                                     type="button"
-                                    variant="secondary"
                                     onClick={importExistingProject}
                                     disabled={!selectedImportId || importing}
                                     className="w-fit gap-2 justify-self-start sm:justify-self-end"

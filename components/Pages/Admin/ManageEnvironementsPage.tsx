@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import ProjectCombobox from "./ProjectCombobox";
 
 import { Environment, Project } from "@/types";
+import { isPathSafeSegment, pathSafeSegmentMessage } from "@/components/lib/nameValidation";
 
 type EnvDeleteSummary = {
     versions: number;
@@ -145,6 +146,10 @@ export default function ManageEnvironmentsPage() {
 
         if (n.length < 2) {
             toast.error("Environment name must be at least 2 characters");
+            return;
+        }
+        if (!isPathSafeSegment(slug)) {
+            toast.error(pathSafeSegmentMessage("Environment slug"));
             return;
         }
         if (!s) {

@@ -307,7 +307,6 @@ export default function CreateTicketPage() {
             toast.error("Ticket name is required");
             return;
         }
-
         if (assigneePickerId) {
             toast.error("Click Add to include the selected assignee, or clear the assignee field");
             return;

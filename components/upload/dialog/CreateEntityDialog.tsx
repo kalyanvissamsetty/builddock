@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
+import { isPathSafeSegment, pathSafeSegmentMessage } from "@/components/lib/nameValidation";
 
 type FieldConfig = {
     name: string,
@@ -22,6 +23,7 @@ type Props = {
   title: string;
   triggerLabel?: string;
   fields: FieldConfig[];
+  pathSafeFields?: string[];
   onSubmit: (values: Record<string, string>) => Promise<void>;
   showAddButton: boolean;
 };
@@ -29,6 +31,7 @@ type Props = {
 export function CreateEntityDialog({
   title,
   fields,
+  pathSafeFields = ["slug"],
   triggerLabel = "+",
   onSubmit,
   showAddButton
@@ -45,6 +48,10 @@ export function CreateEntityDialog({
       for (const field of fields) {
         if (!values[field.name]?.trim()) {
           setError(`${field.name} is required`);
+          return;
+        }
+        if (pathSafeFields.includes(field.name) && !isPathSafeSegment(values[field.name])) {
+          setError(pathSafeSegmentMessage(field.name));
           return;
         }
       }

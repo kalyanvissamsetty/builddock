@@ -472,8 +472,8 @@ function UploadNewVersionDialog({
                 </DialogHeader>
 
                 <div className="space-y-4">
-                    <div className={`grid min-w-0 gap-2 ${hasExistingGraphics ? "sm:grid-cols-2" : ""}`}>
-                        {hasExistingGraphics && (
+                    {hasExistingGraphics && (
+                        <div className="grid min-w-0 gap-2 sm:grid-cols-2">
                             <Button
                                 type="button"
                                 variant={mode === "EXISTING" ? "default" : "outline"}
@@ -483,17 +483,17 @@ function UploadNewVersionDialog({
                             >
                                 New version
                             </Button>
-                        )}
-                        <Button
-                            type="button"
-                            variant={mode === "NEW" ? "default" : "outline"}
-                            className="min-w-0"
-                            disabled={uploading}
-                            onClick={() => setMode("NEW")}
-                        >
-                            New graphic
-                        </Button>
-                    </div>
+                            <Button
+                                type="button"
+                                variant={mode === "NEW" ? "default" : "outline"}
+                                className="min-w-0"
+                                disabled={uploading}
+                                onClick={() => setMode("NEW")}
+                            >
+                                New graphic
+                            </Button>
+                        </div>
+                    )}
 
                     {mode === "EXISTING" && (
                         <div className="space-y-2">

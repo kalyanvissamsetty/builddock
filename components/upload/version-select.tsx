@@ -68,6 +68,7 @@ export function VersionSelect({
         <CreateEntityDialog
           title="Create Version"
           fields={[{ name: "name", placeHolder: "Enter Version Name" }]}
+          pathSafeFields={["name"]}
           showAddButton={
             projectId == undefined ||
             projectId == null ||

@@ -22,6 +22,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {  Project } from "@/types";
+import { isPathSafeSegment, pathSafeSegmentMessage } from "@/components/lib/nameValidation";
 
 type ProjectDeleteSummary = {
     environments: number;
@@ -88,6 +89,10 @@ export default function ManageProjectsPage() {
 
         if (n.length < 2) {
             toast.error("Project name must be at least 2 characters");
+            return;
+        }
+        if (!isPathSafeSegment(slug)) {
+            toast.error(pathSafeSegmentMessage("Project slug"));
             return;
         }
         if (!s) {
