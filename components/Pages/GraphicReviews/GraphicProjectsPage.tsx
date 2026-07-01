@@ -30,7 +30,7 @@ import {
     ComboboxItem,
     ComboboxList,
 } from "@/components/ui/combobox";
-import { isPathSafeSegment, pathSafeSegmentMessage } from "@/components/lib/nameValidation";
+import { isNameWithinLimit, isPathSafeSegment, MAX_NAME_LENGTH, nameLengthMessage, pathSafeSegmentMessage } from "@/components/lib/nameValidation";
 
 type Project = {
     id: number;
@@ -129,6 +129,10 @@ export default function GraphicProjectsPage() {
 
         if (projectName.length < 2) {
             toast.error("Project name must be at least 2 characters");
+            return;
+        }
+        if (!isNameWithinLimit(name)) {
+            toast.error(nameLengthMessage("Project name"));
             return;
         }
         if (!isPathSafeSegment(slug)) {
@@ -243,6 +247,7 @@ export default function GraphicProjectsPage() {
                                             value={name}
                                             onChange={(event) => setName(event.target.value)}
                                             placeholder="e.g. Training poster set"
+                                            maxLength={MAX_NAME_LENGTH}
                                             disabled={creating}
                                         />
                                     </div>

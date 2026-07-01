@@ -22,7 +22,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {  Project } from "@/types";
-import { isPathSafeSegment, pathSafeSegmentMessage } from "@/components/lib/nameValidation";
+import { isNameWithinLimit, isPathSafeSegment, MAX_NAME_LENGTH, nameLengthMessage, pathSafeSegmentMessage } from "@/components/lib/nameValidation";
 
 type ProjectDeleteSummary = {
     environments: number;
@@ -89,6 +89,10 @@ export default function ManageProjectsPage() {
 
         if (n.length < 2) {
             toast.error("Project name must be at least 2 characters");
+            return;
+        }
+        if (!isNameWithinLimit(name)) {
+            toast.error(nameLengthMessage("Project name"));
             return;
         }
         if (!isPathSafeSegment(slug)) {
@@ -172,6 +176,7 @@ export default function ManageProjectsPage() {
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
                                     placeholder="e.g. PGE Transmission"
+                                    maxLength={MAX_NAME_LENGTH}
                                     disabled={creating}
                                 />
                             </div>
@@ -256,13 +261,20 @@ export default function ManageProjectsPage() {
                                 <div className="space-y-3">
                                     {filtered.map((p) => (
                                         <div key={p.id} className="rounded-lg border p-4">
-                                            <div className="flex items-start justify-between gap-3">
-                                                <div className="space-y-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <p className="font-medium">{p.name}</p>
-                                                        <Badge variant="secondary">{p.slug}</Badge>
+                                            <div className="flex min-w-0 items-start gap-3">
+                                                <div className="min-w-0 flex-1 space-y-1">
+                                                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                                                        <p className="min-w-0 max-w-full truncate font-medium" title={p.name}>
+                                                            {p.name}
+                                                        </p>
+                                                        <Badge
+                                                            variant="secondary"
+                                                            className="max-w-full min-w-0 truncate"
+                                                            title={p.slug}
+                                                        >
+                                                            {p.slug}
+                                                        </Badge>
                                                     </div>
-                                                    <p className="text-xs text-muted-foreground">ID {p.id}</p>
                                                 </div>
 
                                                 <AlertDialog
@@ -277,7 +289,7 @@ export default function ManageProjectsPage() {
                                                     }}
                                                 >
                                                     <AlertDialogTrigger asChild>
-                                                        <Button variant="destructive" size="sm">
+                                                        <Button variant="destructive" size="sm" className="shrink-0">
                                                             Delete
                                                         </Button>
                                                     </AlertDialogTrigger>

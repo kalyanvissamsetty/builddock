@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
-import { isPathSafeSegment, pathSafeSegmentMessage } from "@/components/lib/nameValidation";
+import { isNameWithinLimit, isPathSafeSegment, MAX_NAME_LENGTH, nameLengthMessage, pathSafeSegmentMessage } from "@/components/lib/nameValidation";
 
 type FieldConfig = {
     name: string,
@@ -48,6 +48,10 @@ export function CreateEntityDialog({
       for (const field of fields) {
         if (!values[field.name]?.trim()) {
           setError(`${field.name} is required`);
+          return;
+        }
+        if (field.name === "name" && !isNameWithinLimit(values[field.name])) {
+          setError(nameLengthMessage(field.name));
           return;
         }
         if (pathSafeFields.includes(field.name) && !isPathSafeSegment(values[field.name])) {
@@ -94,6 +98,7 @@ export function CreateEntityDialog({
                 placeholder={field.placeHolder}
                 value={values[field.name] ?? ""}
                 onChange={(e) => updateValue(field.name, e.target.value)}
+                maxLength={field.name === "name" ? MAX_NAME_LENGTH : undefined}
                 disabled={loading}
               />
             </Field>

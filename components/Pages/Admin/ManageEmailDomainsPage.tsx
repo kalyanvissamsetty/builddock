@@ -35,6 +35,10 @@ type DomainSummary = {
     inviteCount: number;
 };
 
+const MAX_DOMAIN_LENGTH = 30;
+const MAX_DOMAIN_LABEL_LENGTH = 63;
+const DOMAIN_LABEL_REGEX = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+
 function normalizeDomain(input: string) {
     let d = input.trim().toLowerCase();
     d = d.replace(/^@/, "");
@@ -45,10 +49,20 @@ function normalizeDomain(input: string) {
 
 function isValidDomain(d: string) {
     if (!d) return false;
+    if (d.length > MAX_DOMAIN_LENGTH) return false;
     if (d.includes(" ")) return false;
     if (!d.includes(".")) return false;
     if (d.startsWith(".") || d.endsWith(".")) return false;
-    return true;
+    const labels = d.split(".");
+    return labels.every((label) => (
+        label.length > 0 &&
+        label.length <= MAX_DOMAIN_LABEL_LENGTH &&
+        DOMAIN_LABEL_REGEX.test(label)
+    ));
+}
+
+function domainValidationMessage() {
+    return "Enter a valid domain up to 30 characters. Use only letters, numbers, dots, or hyphens.";
 }
 
 export default function ManageEmailDomainsPage() {
@@ -100,7 +114,7 @@ export default function ManageEmailDomainsPage() {
 
         const d = normalizeDomain(domainInput);
         if (!isValidDomain(d)) {
-            toast.error("Enter a valid domain (example: themosaiccompany.com)");
+            toast.error(domainValidationMessage());
             return;
         }
 
@@ -177,6 +191,7 @@ export default function ManageEmailDomainsPage() {
                                     value={domainInput}
                                     onChange={(e) => setDomainInput(e.target.value)}
                                     placeholder="themosaiccompany.com"
+                                    maxLength={MAX_DOMAIN_LENGTH}
                                     disabled={adding}
                                 />
                                 <p className="text-xs text-muted-foreground">
@@ -216,9 +231,14 @@ export default function ManageEmailDomainsPage() {
                                 {filtered.map((d) => (
                                     <div
                                         key={d.id}
-                                        className="flex items-center justify-between rounded-md border p-3"
+                                        className="flex min-w-0 items-center gap-3 rounded-md border p-3"
                                     >
-                                        <span className="text-sm font-medium">{d.domain}</span>
+                                        <span
+                                            className="min-w-0 flex-1 truncate text-sm font-medium"
+                                            title={d.domain}
+                                        >
+                                            {d.domain}
+                                        </span>
 
                                         <AlertDialog
                                             onOpenChange={(open) => {
@@ -235,7 +255,7 @@ export default function ManageEmailDomainsPage() {
                                             }}
                                         >
                                             <AlertDialogTrigger asChild>
-                                                <Button variant="destructive" size="sm">
+                                                <Button variant="destructive" size="sm" className="shrink-0">
                                                     Delete
                                                 </Button>
                                             </AlertDialogTrigger>
@@ -245,7 +265,8 @@ export default function ManageEmailDomainsPage() {
                                                     <AlertDialogTitle>Delete domain?</AlertDialogTitle>
                                                     <AlertDialogDescription>
                                                         <span className="block">
-                                                            This will remove <span className="font-medium">{d.domain}</span> from allowed domains.
+                                                            This will remove{" "}
+                                                            <span className="break-all font-medium">{d.domain}</span> from allowed domains.
                                                         </span>
 
                                                         <span className="mt-2 block text-sm text-muted-foreground">
@@ -275,7 +296,7 @@ export default function ManageEmailDomainsPage() {
                                                                 />
                                                                 <span className="text-sm">
                                                                     Also delete all users whose email ends with{" "}
-                                                                    <span className="font-medium">@{d.domain}</span>
+                                                                    <span className="break-all font-medium">@{d.domain}</span>
                                                                 </span>
                                                             </label>
 

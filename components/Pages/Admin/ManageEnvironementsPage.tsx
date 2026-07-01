@@ -24,7 +24,7 @@ import { toast } from "sonner";
 import ProjectCombobox from "./ProjectCombobox";
 
 import { Environment, Project } from "@/types";
-import { isPathSafeSegment, pathSafeSegmentMessage } from "@/components/lib/nameValidation";
+import { isNameWithinLimit, isPathSafeSegment, MAX_NAME_LENGTH, nameLengthMessage, pathSafeSegmentMessage } from "@/components/lib/nameValidation";
 
 type EnvDeleteSummary = {
     versions: number;
@@ -148,6 +148,10 @@ export default function ManageEnvironmentsPage() {
             toast.error("Environment name must be at least 2 characters");
             return;
         }
+        if (!isNameWithinLimit(name)) {
+            toast.error(nameLengthMessage("Environment name"));
+            return;
+        }
         if (!isPathSafeSegment(slug)) {
             toast.error(pathSafeSegmentMessage("Environment slug"));
             return;
@@ -241,6 +245,7 @@ export default function ManageEnvironmentsPage() {
                                         value={name}
                                         onChange={(e) => setName(e.target.value)}
                                         placeholder="e.g. Staging"
+                                        maxLength={MAX_NAME_LENGTH}
                                         disabled={creating || !projectId}
                                     />
                                 </div>
@@ -330,13 +335,20 @@ export default function ManageEnvironmentsPage() {
                                 <div className="space-y-3">
                                     {filtered.map((env) => (
                                         <div key={env.id} className="rounded-lg border p-4">
-                                            <div className="flex items-start justify-between gap-3">
-                                                <div className="space-y-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <p className="font-medium">{env.name}</p>
-                                                        <Badge variant="secondary">{env.slug}</Badge>
+                                            <div className="flex min-w-0 items-start gap-3">
+                                                <div className="min-w-0 flex-1 space-y-1">
+                                                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                                                        <p className="min-w-0 max-w-full truncate font-medium" title={env.name}>
+                                                            {env.name}
+                                                        </p>
+                                                        <Badge
+                                                            variant="secondary"
+                                                            className="max-w-full min-w-0 truncate"
+                                                            title={env.slug}
+                                                        >
+                                                            {env.slug}
+                                                        </Badge>
                                                     </div>
-                                                    <p className="text-xs text-muted-foreground">ID {env.id}</p>
                                                 </div>
 
                                                 <AlertDialog
@@ -351,7 +363,7 @@ export default function ManageEnvironmentsPage() {
                                                     }}
                                                 >
                                                     <AlertDialogTrigger asChild>
-                                                        <Button variant="destructive" size="sm">
+                                                        <Button variant="destructive" size="sm" className="shrink-0">
                                                             Delete
                                                         </Button>
                                                     </AlertDialogTrigger>

@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { apiFetch, getApiBase, uploadFormDataWithProgress } from "@/components/lib/api";
+import { isNameWithinLimit, MAX_NAME_LENGTH, nameLengthMessage } from "@/components/lib/nameValidation";
 import { useAuth } from "@/components/auth/useAuth";
 import { getDomainRole } from "@/components/auth/domain";
 import { FolderPlus, UploadCloud, X } from "lucide-react";
@@ -307,6 +308,10 @@ export default function CreateTicketPage() {
             toast.error("Ticket name is required");
             return;
         }
+        if (!isNameWithinLimit(title)) {
+            toast.error(nameLengthMessage("Ticket name"));
+            return;
+        }
         if (assigneePickerId) {
             toast.error("Click Add to include the selected assignee, or clear the assignee field");
             return;
@@ -464,6 +469,7 @@ export default function CreateTicketPage() {
                                 value={title}
                                 onChange={(event) => setTitle(event.target.value)}
                                 placeholder="e.g. Landing page banner review"
+                                maxLength={MAX_NAME_LENGTH}
                                 disabled={uploading}
                             />
                         </div>
