@@ -486,7 +486,7 @@ export default function CreateTicketPage() {
                         <Textarea
                             value={description}
                             onChange={(event) => setDescription(event.target.value)}
-                            placeholder="What should reviewers check?"
+                            placeholder="Describe your request"
                             rows={3}
                             disabled={uploading}
                         />

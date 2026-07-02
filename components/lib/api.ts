@@ -15,16 +15,46 @@ export class ApiError extends Error {
   }
 }
 
+export function getApiBase() {
+  let API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+  if (typeof window !== "undefined") {
+    const origin = window.location.origin;
+
+    if (origin.includes("themosaiccompany")) {
+      API_BASE = "https://preview-api.themosaiccompany.com:444";
+    } else if (origin.includes("timsstudio")) {
+      API_BASE = "https://api.timsstudio.tech";
+    }
+  }
+
+  return API_BASE;
+}
+
+let refreshPromise: Promise<boolean> | null = null;
+
+export function refreshAuthSession() {
+  if (refreshPromise) return refreshPromise;
+
+  const apiBase = getApiBase() ?? "";
+
+  refreshPromise = fetch(`${apiBase}/api/auth/refresh`, {
+    method: "POST",
+    credentials: "include",
+    cache: "no-store",
+  })
+    .then((response) => response.ok)
+    .catch(() => false)
+    .finally(() => {
+      refreshPromise = null;
+    });
+
+  return refreshPromise;
+}
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const isFormData = init?.body instanceof FormData;
-
-  let API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
-  if (typeof window !== "undefined" && window.origin.includes("themosaiccompany")) {
-    API_BASE = "https://preview-api.themosaiccompany.com:444";
-  }
-  else if (typeof window !== "undefined" && window.origin.includes("timsstudio")) {
-    API_BASE = "https://api.timsstudio.tech";
-  }
+  const API_BASE = getApiBase() ?? "";
 
   async function doFetch(): Promise<Response> {
     return fetch(`${API_BASE}${path}`, {
@@ -42,13 +72,8 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 
   // If access expired, refresh and retry once
   if (res.status === 401 && path !== "/api/auth/refresh" && path !== "/api/auth/logout") {
-    const refreshRes = await fetch(`${API_BASE}/api/auth/refresh`, {
-      method: "POST",
-      credentials: "include",
-      cache: "no-store",
-    });
-
-    if (refreshRes.ok) {
+    const refreshed = await refreshAuthSession();
+    if (refreshed) {
       res = await doFetch();
     }
   }
@@ -67,22 +92,6 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
-}
-
-export function getApiBase() {
-  let API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
-
-  if (typeof window !== "undefined") {
-    const origin = window.location.origin;
-
-    if (origin.includes("themosaiccompany")) {
-      API_BASE = "https://preview-api.themosaiccompany.com:444";
-    } else if (origin.includes("timsstudio")) {
-      API_BASE = "https://api.timsstudio.tech";
-    }
-  }
-
-  return API_BASE;
 }
 
 type UploadWithProgressOptions = {
@@ -156,14 +165,8 @@ export async function uploadFormDataWithProgress<T>(
       throw error;
     }
 
-    const apiBase = getApiBase() ?? "";
-    const refreshRes = await fetch(`${apiBase}/api/auth/refresh`, {
-      method: "POST",
-      credentials: "include",
-      cache: "no-store",
-    });
-
-    if (!refreshRes.ok) throw error;
+    const refreshed = await refreshAuthSession();
+    if (!refreshed) throw error;
 
     return uploadFormDataOnce<T>(path, body, options);
   }

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ArrowLeft, Download, Expand, Trash2, UploadCloud } from "lucide-react";
-import { apiFetch, getApiBase, uploadFormDataWithProgress } from "@/components/lib/api";
+import { apiFetch, getApiBase, refreshAuthSession, uploadFormDataWithProgress } from "@/components/lib/api";
 import { useAuth } from "@/components/auth/useAuth";
 import { getDomainRole } from "@/components/auth/domain";
 
@@ -14,7 +14,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -54,6 +53,7 @@ type Comment = {
 };
 
 type ApiUser = { id: number; name?: string | null; email: string };
+type MentionableUser = { id: number; name?: string | null; email: string; roleKey?: string | null };
 type ApiComment = {
     id: number;
     text: string;
@@ -93,6 +93,95 @@ const TICKET_STATUSES: Array<{ value: GraphicTicketStatus; label: string }> = [
     { value: "CLOSED", label: "Closed" },
 ];
 
+function mentionLabel(user: MentionableUser) {
+    return user.name?.trim() || user.email.split("@")[0] || user.email;
+}
+
+function roleLabel(role?: string | null) {
+    if (!role) return "Graphics";
+    return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
+}
+
+function escapeRegExp(value: string) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function mentionedIdsFromText(text: string, users: MentionableUser[]) {
+    const normalizedText = text.toLowerCase();
+    return users
+        .filter((user) => {
+            const labels = [mentionLabel(user), user.email].map((value) => value.toLowerCase());
+            return labels.some((label) => {
+                const pattern = new RegExp(`(^|\\s)@${escapeRegExp(label)}(?=\\s|$|[.,!?;:])`);
+                return pattern.test(normalizedText);
+            });
+        })
+        .map((user) => user.id);
+}
+
+function renderTextWithLinks(text: string, keyPrefix: string) {
+    const urlPattern = /(https?:\/\/[^\s<]+|www\.[^\s<]+)/gi;
+    const exactUrlPattern = /^(https?:\/\/[^\s<]+|www\.[^\s<]+)$/i;
+
+    return text.split(urlPattern).map((part, index) => {
+        if (!exactUrlPattern.test(part)) return <React.Fragment key={`${keyPrefix}-${index}`}>{part}</React.Fragment>;
+
+        const trailingMatch = part.match(/[),.!?;:]+$/);
+        const trailing = trailingMatch?.[0] ?? "";
+        const rawUrl = trailing ? part.slice(0, -trailing.length) : part;
+        const href = rawUrl.startsWith("www.") ? `https://${rawUrl}` : rawUrl;
+
+        return (
+            <React.Fragment key={`${keyPrefix}-${index}`}>
+                <a
+                    href={href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900"
+                >
+                    {rawUrl}
+                </a>
+                {trailing}
+            </React.Fragment>
+        );
+    });
+}
+
+function renderCommentText(text: string, users: MentionableUser[]) {
+    const labels = Array.from(
+        new Set(users.flatMap((user) => [mentionLabel(user), user.email]).filter(Boolean)),
+    ).sort((a, b) => b.length - a.length);
+
+    const knownPattern = labels.length > 0 ? labels.map(escapeRegExp).join("|") : null;
+    const mentionPattern = knownPattern
+        ? new RegExp(`(@(?:${knownPattern}|[\\w.+-]+(?:@[\\w.-]+)?))`, "gi")
+        : /(@[\w.+-]+(?:@[\w.-]+)?)/gi;
+
+    return text.split(mentionPattern).map((part, index) => {
+        if (!part.startsWith("@")) return <React.Fragment key={index}>{renderTextWithLinks(part, `text-${index}`)}</React.Fragment>;
+        const rawLabel = part.slice(1).toLowerCase();
+        const isKnownMention = labels.some((label) => label.toLowerCase() === rawLabel);
+        return (
+            <span
+                key={index}
+                className={`mx-0.5 inline-flex items-center rounded-md border px-1.5 py-0.5 text-xs font-semibold ${
+                    isKnownMention
+                        ? "border-blue-200 bg-blue-50 text-blue-700"
+                        : "border-muted bg-muted/70 text-foreground"
+                }`}
+            >
+                {part}
+            </span>
+        );
+    });
+}
+
+function authorDisplay(author: string) {
+    if (!author.includes("@")) return { name: author, detail: null };
+    const [local, domain] = author.split("@");
+    return { name: local || author, detail: domain ?? null };
+}
+
 function statusLabel(status: GraphicTicketStatus | undefined) {
     return TICKET_STATUSES.find((item) => item.value === (status ?? "OPEN"))?.label ?? "Open";
 }
@@ -107,6 +196,7 @@ function formatLocalDateTime(value: string) {
         day: "2-digit",
         hour: "2-digit",
         minute: "2-digit",
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     }).format(date);
 }
 
@@ -149,6 +239,26 @@ function clippedFileName(value: string, maxChars = 44) {
     return `${value.slice(0, maxChars).trimEnd()}.....`;
 }
 
+function getLatestGraphicVersion(versions: GraphicVersion[]) {
+    return versions
+        .slice()
+        .sort((a, b) => {
+            const dateDiff = new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime();
+            if (dateDiff !== 0) return dateDiff;
+            return b.id - a.id;
+        })[0];
+}
+
+function getSortedGraphicVersions(versions: GraphicVersion[]) {
+    return versions
+        .slice()
+        .sort((a, b) => {
+            const dateDiff = new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime();
+            if (dateDiff !== 0) return dateDiff;
+            return b.id - a.id;
+        });
+}
+
 async function fetchDownloadResponse(path: string) {
     const apiBase = getApiBase();
     const url = `${apiBase}${path}`;
@@ -160,13 +270,8 @@ async function fetchDownloadResponse(path: string) {
     });
 
     if (response.status === 401) {
-        const refreshResponse = await fetch(`${apiBase}/api/auth/refresh`, {
-            method: "POST",
-            credentials: "include",
-            cache: "no-store",
-        });
-
-        if (refreshResponse.ok) {
+        const refreshed = await refreshAuthSession();
+        if (refreshed) {
             response = await fetch(url, {
                 method: "GET",
                 credentials: "include",
@@ -216,10 +321,12 @@ function CommentsDialog({
     comments,
     versions,
     defaultVersion,
+    mentionUsers,
 }: {
     comments: Comment[];
     versions: string[];
     defaultVersion?: string;
+    mentionUsers: MentionableUser[];
 }) {
     const [sort, setSort] = React.useState<"NEWEST" | "OLDEST">("NEWEST");
     const fallbackVersion = versions.includes(defaultVersion ?? "") ? defaultVersion! : versions[0] ?? "ALL";
@@ -248,13 +355,13 @@ function CommentsDialog({
                     View comments
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-3xl">
-                <DialogHeader>
+            <DialogContent className="!flex max-h-[88vh] flex-col overflow-hidden sm:max-w-3xl">
+                <DialogHeader className="shrink-0">
                     <DialogTitle>Comments</DialogTitle>
                     <DialogDescription>Comments for this ticket image.</DialogDescription>
                 </DialogHeader>
 
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid shrink-0 gap-3 sm:grid-cols-2">
                     <Select value={version} onValueChange={setVersion}>
                         <SelectTrigger className="w-full">
                             <SelectValue placeholder="Filter version" />
@@ -281,28 +388,43 @@ function CommentsDialog({
                     </Select>
                 </div>
 
-                <Separator />
-
-                <ScrollArea className="h-72 pr-3">
-                    <div className="space-y-3">
+                <div className="h-[44vh] min-h-[220px] max-h-[420px] overflow-y-auto overscroll-contain pr-3 [scrollbar-gutter:stable] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-muted/40">
+                    <div className="space-y-3 pb-3">
                         {list.length === 0 ? (
                             <p className="text-sm text-muted-foreground">No comments.</p>
                         ) : (
-                            list.map((c) => (
-                                <div key={c.id} className="rounded-md border p-3">
-                                    <div className="flex items-center justify-between gap-3">
-                                        <p className="text-sm font-medium">{c.author}</p>
-                                        <Badge variant="outline">{c.version}</Badge>
+                            list.map((c) => {
+                                const author = authorDisplay(c.author);
+                                return (
+                                    <div key={c.id} className="rounded-lg border bg-background p-4">
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div className="min-w-0">
+                                                <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+                                                    <p className="max-w-full truncate text-sm font-semibold text-foreground">
+                                                        {author.name}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex shrink-0 items-center gap-2">
+                                                <span className="text-xs text-muted-foreground">
+                                                    {formatLocalDateTime(c.createdAt)}
+                                                </span>
+                                                <Badge variant="outline" className="rounded-full px-3">
+                                                    {c.version}
+                                                </Badge>
+                                            </div>
+                                        </div>
+                                        <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-foreground">
+                                            {renderCommentText(c.text, mentionUsers)}
+                                        </p>
                                     </div>
-                                    <p className="mt-2 text-sm">{c.text}</p>
-                                    <p className="mt-2 text-xs text-muted-foreground">{formatLocalDateTime(c.createdAt)}</p>
-                                </div>
-                            ))
+                                );
+                            })
                         )}
                     </div>
-                </ScrollArea>
+                </div>
 
-                <DialogFooter>
+                <DialogFooter className="shrink-0 pt-4">
                     <DialogClose asChild>
                         <Button variant="outline">Close</Button>
                     </DialogClose>
@@ -312,14 +434,60 @@ function CommentsDialog({
     );
 }
 
-function AddCommentDialog({ onAdd }: { onAdd: (text: string) => Promise<void> }) {
+function AddCommentDialog({
+    onAdd,
+    mentionUsers,
+}: {
+    onAdd: (text: string, mentionedUserIds: number[]) => Promise<void>;
+    mentionUsers: MentionableUser[];
+}) {
     const [open, setOpen] = React.useState(false);
     const [text, setText] = React.useState("");
     const [submitting, setSubmitting] = React.useState(false);
+    const [cursor, setCursor] = React.useState(0);
+    const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
+
+    const activeMention = React.useMemo(() => {
+        const beforeCursor = text.slice(0, cursor);
+        const atIndex = beforeCursor.lastIndexOf("@");
+        if (atIndex < 0) return null;
+        const query = beforeCursor.slice(atIndex + 1);
+        if (/\s/.test(query)) return null;
+        return { atIndex, query: query.toLowerCase() };
+    }, [cursor, text]);
+
+    const mentionOptions = React.useMemo(() => {
+        if (!activeMention) return [];
+        return mentionUsers
+            .filter((user) => {
+                const label = mentionLabel(user).toLowerCase();
+                const email = user.email.toLowerCase();
+                return !activeMention.query || label.includes(activeMention.query) || email.includes(activeMention.query);
+            })
+            .slice(0, 8);
+    }, [activeMention, mentionUsers]);
 
     function closeDialog() {
         setText("");
+        setCursor(0);
         setOpen(false);
+    }
+
+    function updateCursor(target: HTMLTextAreaElement) {
+        setCursor(target.selectionStart ?? target.value.length);
+    }
+
+    function insertMention(user: MentionableUser) {
+        if (!activeMention) return;
+        const label = mentionLabel(user);
+        const nextText = `${text.slice(0, activeMention.atIndex)}@${label} ${text.slice(cursor)}`;
+        const nextCursor = activeMention.atIndex + label.length + 2;
+        setText(nextText);
+        setCursor(nextCursor);
+        requestAnimationFrame(() => {
+            textareaRef.current?.focus();
+            textareaRef.current?.setSelectionRange(nextCursor, nextCursor);
+        });
     }
 
     return (
@@ -344,14 +512,43 @@ function AddCommentDialog({ onAdd }: { onAdd: (text: string) => Promise<void> })
                     <DialogTitle>Add comment</DialogTitle>
                     
                 </DialogHeader>
-                <Textarea
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    rows={5}
-                    placeholder="Write comment..."
-                    clearable={false}
-                    className="h-44 max-h-60 resize-none overflow-y-auto field-sizing-fixed sm:h-52"
-                />
+                <div className="relative">
+                    <Textarea
+                        ref={textareaRef}
+                        value={text}
+                        onChange={(e) => {
+                            setText(e.target.value);
+                            updateCursor(e.target);
+                        }}
+                        onClick={(e) => updateCursor(e.currentTarget)}
+                        onKeyUp={(e) => updateCursor(e.currentTarget)}
+                        rows={5}
+                        placeholder="Write comment..."
+                        clearable={false}
+                        className="h-44 max-h-60 resize-none overflow-y-auto field-sizing-fixed sm:h-52"
+                    />
+                    {mentionOptions.length > 0 && (
+                        <div className="absolute left-2 top-12 z-50 max-h-52 w-[min(320px,calc(100%-1rem))] overflow-y-auto rounded-md border bg-background p-1 shadow-lg">
+                            {mentionOptions.map((user) => (
+                                <button
+                                    key={user.id}
+                                    type="button"
+                                    className="flex w-full min-w-0 items-center justify-between gap-3 rounded-sm px-3 py-2 text-left text-sm hover:bg-muted"
+                                    onMouseDown={(event) => {
+                                        event.preventDefault();
+                                        insertMention(user);
+                                    }}
+                                >
+                                    <span className="min-w-0">
+                                        <span className="block truncate font-medium">{mentionLabel(user)}</span>
+                                        <span className="block truncate text-xs text-muted-foreground">{user.email}</span>
+                                    </span>
+                                    <Badge variant="outline" className="shrink-0">{roleLabel(user.roleKey)}</Badge>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
                 <DialogFooter>
                     <Button
                         type="button"
@@ -359,9 +556,10 @@ function AddCommentDialog({ onAdd }: { onAdd: (text: string) => Promise<void> })
                         onClick={async () => {
                             const t = text.trim();
                             if (!t) return;
+                            const mentionedUserIds = mentionedIdsFromText(t, mentionUsers);
                             setSubmitting(true);
                             try {
-                                await onAdd(t);
+                                await onAdd(t, mentionedUserIds);
                                 closeDialog();
                             } catch (err: any) {
                                 toast.error(err?.message ?? "Failed to add comment");
@@ -746,6 +944,7 @@ export default function TicketDetailsPage() {
     const [updatingStatus, setUpdatingStatus] = React.useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
     const [deletingTicket, setDeletingTicket] = React.useState(false);
+    const [mentionUsers, setMentionUsers] = React.useState<MentionableUser[]>([]);
 
     async function loadTicket(options: { showPageLoading?: boolean } = {}) {
         if (!ticketId) return;
@@ -766,6 +965,25 @@ export default function TicketDetailsPage() {
     React.useEffect(() => {
         loadTicket();
         // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [ticketId]);
+
+    React.useEffect(() => {
+        if (!ticketId) return;
+
+        let cancelled = false;
+        async function loadMentionUsers() {
+            try {
+                const data = await apiFetch<MentionableUser[]>(`/api/graphics/tickets/${ticketId}/comment-participants`);
+                if (!cancelled) setMentionUsers(Array.isArray(data) ? data : []);
+            } catch {
+                if (!cancelled) setMentionUsers([]);
+            }
+        }
+
+        loadMentionUsers();
+        return () => {
+            cancelled = true;
+        };
     }, [ticketId]);
 
     if (loading) {
@@ -972,6 +1190,7 @@ export default function TicketDetailsPage() {
                         graphic={g}
                         canDownload={canViewTicket}
                         onUpdate={loadTicket}
+                        mentionUsers={mentionUsers}
                     />
                 ))}
             </div>
@@ -1008,24 +1227,26 @@ function TicketGraphicCard({
     graphic,
     canDownload,
     onUpdate,
+    mentionUsers,
 }: {
     graphic: TicketGraphic;
     canDownload: boolean;
     onUpdate: () => Promise<void>;
+    mentionUsers: MentionableUser[];
 }) {
-    const [selectedVersion, setSelectedVersion] = React.useState(graphic.versions[0]?.version ?? "v1");
+    const sortedVersions = React.useMemo(() => getSortedGraphicVersions(graphic.versions), [graphic.versions]);
+    const latestVersion = sortedVersions[0];
+    const [selectedVersion, setSelectedVersion] = React.useState(latestVersion?.version ?? "v1");
     const [downloading, setDownloading] = React.useState(false);
 
     React.useEffect(() => {
-        if (!graphic.versions.some((v) => v.version === selectedVersion)) {
-            setSelectedVersion(graphic.versions[0]?.version ?? "v1");
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        const nextLatest = getLatestGraphicVersion(graphic.versions);
+        setSelectedVersion(nextLatest?.version ?? "v1");
     }, [graphic.versions]);
 
     const active = React.useMemo(
-        () => graphic.versions.find((v) => v.version === selectedVersion) ?? graphic.versions[0],
-        [graphic.versions, selectedVersion],
+        () => sortedVersions.find((v) => v.version === selectedVersion) ?? latestVersion,
+        [latestVersion, selectedVersion, sortedVersions],
     );
 
     const comments = React.useMemo(() => {
@@ -1040,12 +1261,12 @@ function TicketGraphicCard({
         );
     }, [graphic.versions]);
 
-    async function addComment(text: string) {
+    async function addComment(text: string, mentionedUserIds: number[]) {
         if (!active?.id) return;
 
         await apiFetch(`/api/graphics/versions/${active.id}/comments`, {
             method: "POST",
-            body: JSON.stringify({ text }),
+            body: JSON.stringify({ text, mentionedUserIds }),
         });
         toast.success("Comment added");
         await onUpdate();
@@ -1103,7 +1324,7 @@ function TicketGraphicCard({
                             <SelectValue placeholder="Version" />
                         </SelectTrigger>
                         <SelectContent className="w-[var(--radix-select-trigger-width)]">
-                            {graphic.versions.map((v) => (
+                            {sortedVersions.map((v) => (
                                 <SelectItem key={v.version} value={v.version}>
                                     {v.version} • {new Date(v.uploadedAt).toLocaleDateString()}
                                 </SelectItem>
@@ -1158,11 +1379,13 @@ function TicketGraphicCard({
                 <div className="flex flex-wrap gap-2">
                     <AddCommentDialog
                         onAdd={addComment}
+                        mentionUsers={mentionUsers}
                     />
                     <CommentsDialog
                         comments={comments}
-                        versions={graphic.versions.map((version) => version.version)}
+                        versions={sortedVersions.map((version) => version.version)}
                         defaultVersion={selectedVersion}
+                        mentionUsers={mentionUsers}
                     />
                 </div>
             </CardContent>

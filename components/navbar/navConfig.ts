@@ -36,7 +36,7 @@ export const NAV_ITEMS: NavItem[] = [
         domain: "WEBGL",
       },
       {
-        label: "Promote & Delete Users",
+        label: "User Role Management",
         href: "/promoteusers",
         domain: "WEBGL",
       }
@@ -85,12 +85,12 @@ export const NAV_ITEMS: NavItem[] = [
     domain: "GRAPHICS",
   },
   {
-    label: "Add Graphics Users",
+    label: "Add Users",
     href: "/addusers",
     domain: "GRAPHICS",
   },
   {
-    label: "Promote & Delete Users",
+    label: "User Role Management",
     href: "/promoteusers",
     domain: "GRAPHICS",
   },
