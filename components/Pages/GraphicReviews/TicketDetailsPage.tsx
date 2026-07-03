@@ -5,10 +5,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, Download, Expand, Trash2, UploadCloud } from "lucide-react";
+import { ArrowLeft, Download, Expand, FileText, History, Loader2, Trash2, UploadCloud } from "lucide-react";
 import { apiFetch, getApiBase, refreshAuthSession, uploadFormDataWithProgress } from "@/components/lib/api";
 import { useAuth } from "@/components/auth/useAuth";
-import { getDomainRole } from "@/components/auth/domain";
+import { getDefaultRouteForDomain, getDomainRole } from "@/components/auth/domain";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -74,6 +74,25 @@ type GraphicVersion = {
 type TicketGraphic = { id: number; fileName: string; title: string; description?: string | null; versions: GraphicVersion[] };
 type GraphicTicketStatus = "OPEN" | "IN_REVIEW" | "CHANGES_REQUESTED" | "APPROVED" | "CLOSED";
 type TicketAccess = { canView: boolean; accessScope: "ASSIGNED" | "ALL" | null };
+type TicketReference = {
+    id: number;
+    originalFileName: string;
+    mimeType?: string | null;
+    fileSizeBytes?: number | null;
+    uploadedByName?: string | null;
+    uploadedByEmail?: string | null;
+    uploadedBy?: ApiUser | null;
+    createdAt: string;
+};
+type TicketActivity = {
+    id: number;
+    type: string;
+    metadata?: Record<string, unknown> | null;
+    actorName?: string | null;
+    actorEmail?: string | null;
+    actor?: ApiUser | null;
+    createdAt: string;
+};
 
 type Ticket = {
     id: number;
@@ -83,6 +102,8 @@ type Ticket = {
     currentUserTicketAccess?: TicketAccess;
     graphicData?: { project?: { id: number; name: string; slug: string } };
     graphics: TicketGraphic[];
+    references?: TicketReference[];
+    activities?: TicketActivity[];
 };
 
 const TICKET_STATUSES: Array<{ value: GraphicTicketStatus; label: string }> = [
@@ -92,6 +113,14 @@ const TICKET_STATUSES: Array<{ value: GraphicTicketStatus; label: string }> = [
     { value: "APPROVED", label: "Approved" },
     { value: "CLOSED", label: "Closed" },
 ];
+
+function errorMessage(error: unknown, fallback: string) {
+    return error instanceof Error ? error.message : fallback;
+}
+
+function metadataText(value: unknown) {
+    return typeof value === "string" || typeof value === "number" ? String(value) : "";
+}
 
 function mentionLabel(user: MentionableUser) {
     return user.name?.trim() || user.email.split("@")[0] || user.email;
@@ -198,6 +227,58 @@ function formatLocalDateTime(value: string) {
         minute: "2-digit",
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     }).format(date);
+}
+
+function formatFileSize(value?: number | null) {
+    if (!value || value <= 0) return null;
+    if (value < 1024 * 1024) return `${Math.max(1, Math.round(value / 1024))} KB`;
+    return `${(value / (1024 * 1024)).toFixed(value < 10 * 1024 * 1024 ? 1 : 0)} MB`;
+}
+
+function referenceUploaderName(reference: TicketReference) {
+    return reference.uploadedByName
+        || reference.uploadedBy?.name
+        || reference.uploadedByEmail?.split("@")[0]
+        || reference.uploadedBy?.email?.split("@")[0]
+        || "Unknown";
+}
+
+function activityActorName(activity: TicketActivity) {
+    return activity.actorName
+        || activity.actor?.name
+        || activity.actorEmail?.split("@")[0]
+        || activity.actor?.email?.split("@")[0]
+        || "Someone";
+}
+
+function activityDetails(activity: TicketActivity) {
+    const meta = activity.metadata ?? {};
+    switch (activity.type) {
+        case "TICKET_CREATED":
+            return { text: "created this ticket", badge: metadataText(meta.ticketTitle) };
+        case "TICKET_ASSIGNED":
+            return { text: "assigned a ticket", badge: metadataText(meta.assigneeName) || metadataText(meta.assigneeEmail) };
+        case "TICKET_UNASSIGNED":
+            return { text: "removed ticket access", badge: metadataText(meta.assigneeName) || metadataText(meta.assigneeEmail) };
+        case "STATUS_UPDATED":
+            return { text: `changed status from ${statusLabel(metadataText(meta.fromStatus) as GraphicTicketStatus)} to ${statusLabel(metadataText(meta.toStatus) as GraphicTicketStatus)}`, badge: null };
+        case "GRAPHIC_UPLOADED":
+            return { text: "uploaded a new graphic", badge: `${metadataText(meta.graphicName) || metadataText(meta.fileName) || "Graphic"}${metadataText(meta.versionName) ? ` • ${metadataText(meta.versionName)}` : ""}` };
+        case "GRAPHIC_VERSION_UPLOADED":
+            return { text: "uploaded a new graphic version", badge: `${metadataText(meta.graphicName) || metadataText(meta.fileName) || "Graphic"}${metadataText(meta.versionName) ? ` • ${metadataText(meta.versionName)}` : ""}` };
+        case "GRAPHIC_DOWNLOADED":
+            return { text: "downloaded a graphic", badge: `${metadataText(meta.graphicName) || metadataText(meta.fileName) || "Graphic"}${metadataText(meta.versionName) ? ` • ${metadataText(meta.versionName)}` : ""}` };
+        case "COMMENT_ADDED":
+            return { text: "commented on a graphic", badge: `${metadataText(meta.graphicName) || "Graphic"}${metadataText(meta.versionName) ? ` • ${metadataText(meta.versionName)}` : ""}` };
+        case "REFERENCE_UPLOADED":
+            return { text: "uploaded a reference", badge: metadataText(meta.referenceName) || metadataText(meta.fileName) };
+        case "REFERENCE_DOWNLOADED":
+            return { text: "downloaded a reference", badge: metadataText(meta.referenceName) || metadataText(meta.fileName) };
+        case "REFERENCE_DELETED":
+            return { text: "deleted a reference", badge: metadataText(meta.referenceName) || metadataText(meta.fileName) };
+        default:
+            return { text: activity.type.toLowerCase().replaceAll("_", " "), badge: null };
+    }
 }
 
 function ClippedDescription({
@@ -376,8 +457,7 @@ function CommentsDialog({
                         </SelectContent>
                     </Select>
 
-                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    <Select value={sort} onValueChange={(v) => setSort(v as any)}>
+                    <Select value={sort} onValueChange={(v) => setSort(v as "NEWEST" | "OLDEST")}>
                         <SelectTrigger className="w-full">
                             <SelectValue placeholder="Sort" />
                         </SelectTrigger>
@@ -561,8 +641,8 @@ function AddCommentDialog({
                             try {
                                 await onAdd(t, mentionedUserIds);
                                 closeDialog();
-                            } catch (err: any) {
-                                toast.error(err?.message ?? "Failed to add comment");
+                            } catch (err: unknown) {
+                                toast.error(errorMessage(err, "Failed to add comment"));
                             } finally {
                                 setSubmitting(false);
                             }
@@ -907,13 +987,13 @@ function UploadNewVersionDialog({
                                     message: "Uploaded",
                                 });
                                 closeAndReset();
-                            } catch (err: any) {
+                            } catch (err: unknown) {
                                 setProgress({
                                     status: "error",
                                     percent: progress.percent,
-                                    message: err?.message ?? "Upload failed",
+                                    message: errorMessage(err, "Upload failed"),
                                 });
-                                toast.error(err?.message ?? "Upload failed");
+                                toast.error(errorMessage(err, "Upload failed"));
                             } finally {
                                 eventSource.close();
                                 setUploading(false);
@@ -945,18 +1025,27 @@ export default function TicketDetailsPage() {
     const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
     const [deletingTicket, setDeletingTicket] = React.useState(false);
     const [mentionUsers, setMentionUsers] = React.useState<MentionableUser[]>([]);
+    const ticketRef = React.useRef<Ticket | null>(null);
+
+    React.useEffect(() => {
+        ticketRef.current = ticket;
+    }, [ticket]);
 
     async function loadTicket(options: { showPageLoading?: boolean } = {}) {
         if (!ticketId) return;
 
-        const showPageLoading = options.showPageLoading ?? !ticket;
+        const showPageLoading = options.showPageLoading ?? !ticketRef.current;
         if (showPageLoading) setLoading(true);
         try {
             const data = await apiFetch<Ticket>(`/api/graphics/tickets/${ticketId}`);
             setTicket(data);
-        } catch (err: any) {
-            toast.error(err?.message ?? "Failed to load ticket");
+        } catch (err: unknown) {
             setTicket(null);
+            const message = errorMessage(err, "Ticket not found");
+            toast.error(message);
+            if (showPageLoading && me) {
+                router.replace(getDefaultRouteForDomain(me, "GRAPHICS"));
+            }
         } finally {
             if (showPageLoading) setLoading(false);
         }
@@ -966,6 +1055,42 @@ export default function TicketDetailsPage() {
         loadTicket();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [ticketId]);
+
+    React.useEffect(() => {
+        if (!ticketId || !ticket) return;
+
+        const apiBase = getApiBase() ?? "";
+        const eventSource = new EventSource(`${apiBase}/api/graphics/tickets/${ticketId}/activity/stream`, {
+            withCredentials: true,
+        });
+        let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+        function scheduleRefresh() {
+            if (refreshTimer) clearTimeout(refreshTimer);
+            refreshTimer = setTimeout(() => {
+                loadTicket({ showPageLoading: false });
+            }, 250);
+        }
+
+        eventSource.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data) as { type?: string };
+                if (data.type === "activity") scheduleRefresh();
+            } catch {
+                // Ignore malformed realtime events; the page still works with manual refreshes/actions.
+            }
+        };
+
+        eventSource.onerror = () => {
+            // Browser EventSource retries automatically using the server-provided retry interval.
+        };
+
+        return () => {
+            if (refreshTimer) clearTimeout(refreshTimer);
+            eventSource.close();
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [ticketId, Boolean(ticket)]);
 
     React.useEffect(() => {
         if (!ticketId) return;
@@ -1054,14 +1179,14 @@ export default function TicketDetailsPage() {
 
         setUpdatingStatus(true);
         try {
-            const updated = await apiFetch<Ticket>(`/api/graphics/tickets/${currentTicket.id}`, {
+            await apiFetch<Ticket>(`/api/graphics/tickets/${currentTicket.id}`, {
                 method: "PATCH",
                 body: JSON.stringify({ status }),
             });
-            setTicket((current) => current ? { ...current, status: updated.status ?? status } : current);
+            await loadTicket({ showPageLoading: false });
             toast.success("Ticket status updated");
-        } catch (err: any) {
-            toast.error(err?.message ?? "Failed to update ticket status");
+        } catch (err: unknown) {
+            toast.error(errorMessage(err, "Failed to update ticket status"));
         } finally {
             setUpdatingStatus(false);
         }
@@ -1078,8 +1203,8 @@ export default function TicketDetailsPage() {
             });
             toast.success("Ticket deleted");
             router.push("/viewtickets");
-        } catch (err: any) {
-            toast.error(err?.message ?? "Failed to delete ticket");
+        } catch (err: unknown) {
+            toast.error(errorMessage(err, "Failed to delete ticket"));
         } finally {
             setDeletingTicket(false);
             setDeleteDialogOpen(false);
@@ -1101,6 +1226,11 @@ export default function TicketDetailsPage() {
     const canDeleteTicket = canViewTicket && (
         graphicsRole === "ADMIN" ||
         graphicsRole === "MANAGER"
+    );
+    const canDeleteReferences = canViewTicket && (
+        graphicsRole === "ADMIN" ||
+        graphicsRole === "MANAGER" ||
+        graphicsRole === "REVIEWER"
     );
 
     return (
@@ -1195,6 +1325,16 @@ export default function TicketDetailsPage() {
                 ))}
             </div>
 
+            <TicketReferencesSection
+                ticketId={ticket.id}
+                references={ticket.references ?? []}
+                canUpload={canViewTicket}
+                canDelete={canDeleteReferences}
+                onUpdate={() => loadTicket({ showPageLoading: false })}
+            />
+
+            <TicketActivitySection activities={ticket.activities ?? []} />
+
             <AlertDialog open={deleteDialogOpen} onOpenChange={(open) => !open && !deletingTicket && setDeleteDialogOpen(false)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -1220,6 +1360,293 @@ export default function TicketDetailsPage() {
                 </AlertDialogContent>
             </AlertDialog>
         </div>
+    );
+}
+
+function TicketReferencesSection({
+    ticketId,
+    references,
+    canUpload,
+    canDelete,
+    onUpdate,
+}: {
+    ticketId: number;
+    references: TicketReference[];
+    canUpload: boolean;
+    canDelete: boolean;
+    onUpdate: () => Promise<void>;
+}) {
+    const inputRef = React.useRef<HTMLInputElement | null>(null);
+    const [uploading, setUploading] = React.useState(false);
+    const [uploadProgress, setUploadProgress] = React.useState<GraphicUploadProgress | null>(null);
+    const [downloadingId, setDownloadingId] = React.useState<number | null>(null);
+    const [deletingId, setDeletingId] = React.useState<number | null>(null);
+
+    async function uploadReferences(files: FileList | null) {
+        if (!files || files.length === 0 || uploading) return;
+
+        const picked = Array.from(files);
+        const tooLarge = picked.find((file) => file.size > 50 * 1024 * 1024);
+        if (tooLarge) {
+            toast.error("Each reference file must be 50 MB or less");
+            return;
+        }
+
+        setUploading(true);
+        try {
+            for (const file of picked) {
+                const uploadId = crypto.randomUUID();
+                const eventSource = connectGraphicUploadProgress(uploadId, (event) => {
+                    if (event.type === "error") {
+                        setUploadProgress({ percent: 0, status: "error", message: event.message ?? "Upload failed" });
+                        return;
+                    }
+                    if (typeof event.overallPercent === "number") {
+                        setUploadProgress({
+                            percent: Math.max(60, event.overallPercent),
+                            status: event.type === "completed" ? "completed" : "processing",
+                            message: event.message,
+                        });
+                    }
+                });
+
+                const data = new FormData();
+                data.append("file", file);
+                setUploadProgress({ percent: 0, status: "uploading", message: `Uploading ${file.name}` });
+
+                await uploadFormDataWithProgress(`/api/graphics/tickets/${ticketId}/references?uploadId=${uploadId}`, data, {
+                    method: "POST",
+                    onProgress: (progress) => {
+                        setUploadProgress({
+                            status: progress.percent >= 100 ? "processing" : "uploading",
+                            percent: Math.min(60, Math.round(progress.percent * 0.6)),
+                            message: progress.percent >= 100 ? "Saving to storage" : `Uploading ${file.name}`,
+                        });
+                    },
+                });
+
+                eventSource.close();
+                setUploadProgress({ percent: 100, status: "completed", message: `${file.name} uploaded` });
+            }
+
+            toast.success(picked.length > 1 ? "References uploaded" : "Reference uploaded");
+            await onUpdate();
+            setUploadProgress(null);
+        } catch (err: unknown) {
+            setUploadProgress({ percent: 0, status: "error", message: errorMessage(err, "Upload failed") });
+            toast.error(errorMessage(err, "Failed to upload reference"));
+        } finally {
+            setUploading(false);
+            if (inputRef.current) inputRef.current.value = "";
+        }
+    }
+
+    async function downloadReference(reference: TicketReference) {
+        if (downloadingId) return;
+
+        setDownloadingId(reference.id);
+        try {
+            const response = await fetchDownloadResponse(`/api/graphics/references/${reference.id}/download`);
+            if (!response.ok) {
+                let message = `Download failed: ${response.status}`;
+                try {
+                    const data = await response.json();
+                    message = data?.message || message;
+                } catch {
+                    // ignore non-json download errors
+                }
+                throw new Error(message);
+            }
+
+            const blob = await response.blob();
+            const objectUrl = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = objectUrl;
+            link.download = fileNameFromDisposition(response.headers.get("Content-Disposition")) || reference.originalFileName;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(objectUrl);
+            toast.success("Download started");
+            await onUpdate();
+        } catch (err: unknown) {
+            toast.error(errorMessage(err, "Failed to download reference"));
+        } finally {
+            setDownloadingId(null);
+        }
+    }
+
+    async function deleteReference(reference: TicketReference) {
+        if (deletingId) return;
+
+        setDeletingId(reference.id);
+        try {
+            await apiFetch(`/api/graphics/references/${reference.id}`, { method: "DELETE" });
+            toast.success("Reference deleted");
+            await onUpdate();
+        } catch (err: unknown) {
+            toast.error(errorMessage(err, "Failed to delete reference"));
+        } finally {
+            setDeletingId(null);
+        }
+    }
+
+    return (
+        <Card>
+            <CardHeader className="flex flex-col gap-3 pb-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                        <FileText className="h-4 w-4" />
+                        References
+                    </CardTitle>
+                    <CardDescription>Files shared for design context and review decisions.</CardDescription>
+                </div>
+                {canUpload && (
+                    <div>
+                        <input
+                            ref={inputRef}
+                            type="file"
+                            multiple
+                            className="hidden"
+                            disabled={uploading}
+                            onChange={(event) => uploadReferences(event.target.files)}
+                        />
+                        <Button type="button" size="sm" className="gap-2" disabled={uploading} onClick={() => inputRef.current?.click()}>
+                            <UploadCloud className="h-4 w-4" />
+                            Upload reference
+                        </Button>
+                    </div>
+                )}
+            </CardHeader>
+            <CardContent className="space-y-3">
+                {uploadProgress && (
+                    <div className="rounded-md border bg-muted/20 p-3">
+                        <div className="mb-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                            <span className="truncate">{uploadProgress.message ?? "Uploading"}</span>
+                            <span>{uploadProgress.percent}%</span>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-border">
+                            <div
+                                className={`h-full rounded-full ${uploadProgress.status === "error" ? "bg-destructive" : "bg-primary"}`}
+                                style={{ width: `${uploadProgress.percent}%` }}
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {references.length === 0 ? (
+                    <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                        No references uploaded yet.
+                    </div>
+                ) : (
+                    <div className="min-w-0 divide-y rounded-md border">
+                        {references.map((reference) => {
+                            const fileSize = formatFileSize(reference.fileSizeBytes);
+                            return (
+                                <div key={reference.id} className="grid min-w-0 gap-3 p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                                    <div className="min-w-0 space-y-1">
+                                        <button
+                                            type="button"
+                                            className="block w-full min-w-0 truncate text-left text-sm font-medium underline-offset-2 hover:underline"
+                                            onClick={() => downloadReference(reference)}
+                                            disabled={downloadingId === reference.id}
+                                            title={reference.originalFileName}
+                                        >
+                                            {reference.originalFileName}
+                                        </button>
+                                        <p className="truncate text-xs text-muted-foreground">
+                                            {[
+                                                fileSize,
+                                                `Uploaded by ${referenceUploaderName(reference)}`,
+                                                formatLocalDateTime(reference.createdAt),
+                                            ].filter(Boolean).join(" • ")}
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-2 sm:justify-end">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={() => downloadReference(reference)}
+                                            disabled={downloadingId === reference.id}
+                                            aria-label={`Download ${reference.originalFileName}`}
+                                            title="Download reference"
+                                        >
+                                            {downloadingId === reference.id ? (
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                                <Download className="h-4 w-4" />
+                                            )}
+                                        </Button>
+                                        {canDelete && (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="icon"
+                                                className="text-destructive hover:text-destructive"
+                                                onClick={() => deleteReference(reference)}
+                                                disabled={deletingId === reference.id}
+                                                aria-label={`Delete ${reference.originalFileName}`}
+                                                title="Delete reference"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
+function TicketActivitySection({ activities }: { activities: TicketActivity[] }) {
+    return (
+        <Card>
+            <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                    <History className="h-4 w-4" />
+                    Activity
+                </CardTitle>
+                <CardDescription>Recent ticket changes, uploads, comments, and downloads.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {activities.length === 0 ? (
+                    <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                        No activity yet.
+                    </div>
+                ) : (
+                    <div className="max-h-80 space-y-2 overflow-y-auto pr-2">
+                        {activities.map((activity) => {
+                            const details = activityDetails(activity);
+                            return (
+                                <div key={activity.id} className="rounded-md border p-3">
+                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                        <div className="min-w-0">
+                                            <p className="text-sm">
+                                                <span className="font-semibold">{activityActorName(activity)}</span>{" "}
+                                                <span className="text-muted-foreground">{details.text}</span>
+                                            </p>
+                                            {details.badge ? (
+                                                <Badge variant="secondary" className="mt-2 max-w-full truncate">
+                                                    {String(details.badge)}
+                                                </Badge>
+                                            ) : null}
+                                        </div>
+                                        <span className="shrink-0 text-xs text-muted-foreground">
+                                            {formatLocalDateTime(activity.createdAt)}
+                                        </span>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
     );
 }
 
@@ -1301,8 +1728,9 @@ function TicketGraphicCard({
             link.remove();
             URL.revokeObjectURL(objectUrl);
             toast.success("Download started");
-        } catch (err: any) {
-            toast.error(err?.message ?? "Failed to download graphic");
+            await onUpdate();
+        } catch (err: unknown) {
+            toast.error(errorMessage(err, "Failed to download graphic"));
         } finally {
             setDownloading(false);
         }
@@ -1344,7 +1772,11 @@ function TicketGraphicCard({
                             disabled={!canDownload || !active?.id || downloading}
                             onClick={downloadActiveGraphic}
                         >
-                            <Download className="h-4 w-4" />
+                            {downloading ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <Download className="h-4 w-4" />
+                            )}
                         </Button>
                     </div>
                 </div>

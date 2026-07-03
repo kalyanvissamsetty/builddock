@@ -62,7 +62,13 @@ function userLabel(user: User) {
     return user.name ? `${user.name} (${user.email})` : user.email;
 }
 
-function MultiImageDropzone({
+function errorMessage(error: unknown, fallback: string) {
+    return error instanceof Error ? error.message : fallback;
+}
+
+const MAX_REFERENCE_FILE_SIZE = 50 * 1024 * 1024;
+
+function MultiReferenceDropzone({
     files,
     onChange,
     progressItems = [],
@@ -79,10 +85,9 @@ function MultiImageDropzone({
     function accept(list: FileList | null) {
         if (disabled) return;
         if (!list || list.length === 0) return;
-        const allowed = ["image/png", "image/jpeg", "image/webp"];
-        const picked = Array.from(list).filter((f) => allowed.includes(f.type));
+        const picked = Array.from(list).filter((f) => f.size <= MAX_REFERENCE_FILE_SIZE);
         if (picked.length !== list.length) {
-            toast.error("Only PNG/JPG/WEBP supported to upload");
+            toast.error("Each reference file must be 50 MB or less");
         }
         onChange([...files, ...picked]);
     }
@@ -108,7 +113,6 @@ function MultiImageDropzone({
                 <input
                     ref={inputRef}
                     type="file"
-                    accept="image/png,image/jpeg,image/webp"
                     multiple
                     className="hidden"
                     disabled={disabled}
@@ -119,9 +123,9 @@ function MultiImageDropzone({
                     <div className="flex gap-3">
                         <UploadCloud className="h-5 w-5 text-muted-foreground mt-0.5" />
                         <div>
-                            <p className="text-sm font-medium">Upload images to this ticket</p>
+                            <p className="text-sm font-medium">Attach reference files</p>
                             <p className="text-xs text-muted-foreground">
-                                Drag & drop multiple images or choose files. (PNG/JPG/WEBP)
+                                Drag & drop any supporting files the designer should use. Max 50 MB each.
                             </p>
                         </div>
                     </div>
@@ -257,8 +261,8 @@ export default function CreateTicketPage() {
             ]);
             setProjects(Array.isArray(projectsData) ? projectsData : []);
             setAssignableUsers(Array.isArray(usersData) ? usersData.filter((user) => user.role === "REVIEWER" || user.role === "DESIGNER") : []);
-        } catch (err: any) {
-            toast.error(err?.message ?? "Failed to load project data");
+        } catch (err: unknown) {
+            toast.error(errorMessage(err, "Failed to load project data"));
             setProjects([]);
             setAssignableUsers([]);
         } finally {
@@ -357,16 +361,13 @@ export default function CreateTicketPage() {
 
                 const data = new FormData();
                 data.append("file", file);
-                data.append("fileName", file.name);
-                data.append("title", file.name);
-                data.append("version", "v1");
 
                 updateFileProgress(index, {
                     status: "uploading",
                     message: "Sending file to server",
                 });
 
-                await uploadFormDataWithProgress(`/api/graphics/tickets/${ticket.id}/graphics?uploadId=${uploadId}`, data, {
+                await uploadFormDataWithProgress(`/api/graphics/tickets/${ticket.id}/references?uploadId=${uploadId}`, data, {
                     method: "POST",
                     onProgress: (progress) => {
                         updateFileProgress(index, {
@@ -385,15 +386,15 @@ export default function CreateTicketPage() {
                 });
             }
 
-            toast.success(files.length > 0 ? "Ticket created and images uploaded" : "Ticket created successfully");
+            toast.success(files.length > 0 ? "Ticket created and references uploaded" : "Ticket created successfully");
             setTitle("");
             setDescription("");
             setFiles([]);
             setFileProgress([]);
             setAssigneeIds([]);
             setAssigneePickerId("");
-        } catch (err: any) {
-            toast.error(err?.message ?? "Failed to create ticket");
+        } catch (err: unknown) {
+            toast.error(errorMessage(err, "Failed to create ticket"));
         } finally {
             setUploading(false);
         }
@@ -417,14 +418,14 @@ export default function CreateTicketPage() {
             <div>
                 <h1 className="text-2xl font-semibold">Create Ticket</h1>
                 <p className="text-sm text-muted-foreground">
-                    Create a new ticket and optionally upload its first graphics.
+                    Create a new ticket and optionally attach reference files.
                 </p>
             </div>
 
             <Card>
                 <CardHeader className="pb-3">
                     <CardTitle>Ticket details</CardTitle>
-                    <CardDescription>Select a project, name the ticket, and optionally upload its first graphics.</CardDescription>
+                    <CardDescription>Select a project, name the ticket, and optionally attach reference files.</CardDescription>
                 </CardHeader>
 
                 <CardContent className="space-y-5">
@@ -551,7 +552,7 @@ export default function CreateTicketPage() {
                         )}
                     </div>
 
-                    <MultiImageDropzone
+                    <MultiReferenceDropzone
                         files={files}
                         disabled={uploading}
                         progressItems={fileProgress}
@@ -582,7 +583,7 @@ export default function CreateTicketPage() {
                             disabled={!canSubmit}
                             onClick={createTicketAndUpload}
                         >
-                            {uploading ? "Creating..." : files.length > 0 ? "Create Ticket & Upload" : "Create Ticket"}
+                            {uploading ? "Creating..." : files.length > 0 ? "Create Ticket & Attach References" : "Create Ticket"}
                         </Button>
                         <Button
                             variant="outline"
