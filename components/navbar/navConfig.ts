@@ -70,7 +70,7 @@ export const NAV_ITEMS: NavItem[] = [
     ],
   },
   {
-    label: "Graphics Projects",
+    label: "Projects",
     href: "/graphicprojects",
     domain: "GRAPHICS",
   },
