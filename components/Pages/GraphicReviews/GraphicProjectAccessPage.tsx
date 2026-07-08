@@ -356,7 +356,7 @@ export default function GraphicProjectAccessPage() {
                                             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                                 <div className="min-w-0 space-y-1">
                                                     <p className="font-medium">
-                                                        {assignment.user ? userLabel(assignment.user) : `User ${assignment.userId}`}
+                                                        {assignment.user ? (assignment.user.email) : `User ${assignment.userId}`}
                                                     </p>
                                                     <p className="text-sm text-muted-foreground">
                                                         {assignment.ticket?.title ?? `Ticket ${assignment.ticketId}`}
