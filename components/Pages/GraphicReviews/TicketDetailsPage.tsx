@@ -66,6 +66,7 @@ type GraphicVersion = {
     id: number;
     version: string;
     imageUrl: string;
+    previewImageUrl?: string | null;
     originalFileName?: string | null;
     uploadedAt: string;
     uploadedBy?: ApiUser | null;
@@ -1675,6 +1676,7 @@ function TicketGraphicCard({
         () => sortedVersions.find((v) => v.version === selectedVersion) ?? latestVersion,
         [latestVersion, selectedVersion, sortedVersions],
     );
+    const displayImageUrl = active?.previewImageUrl || active?.imageUrl;
 
     const comments = React.useMemo(() => {
         return graphic.versions.flatMap((version) =>
@@ -1761,8 +1763,8 @@ function TicketGraphicCard({
                     </Select>
 
                     <div className="flex items-center gap-2">
-                        {active?.imageUrl ? (
-                            <FullscreenImageDialog title={`${graphic.fileName} (${selectedVersion})`} imageUrl={active.imageUrl} />
+                        {displayImageUrl ? (
+                            <FullscreenImageDialog title={`${graphic.fileName} (${selectedVersion})`} imageUrl={displayImageUrl} />
                         ) : null}
 
                         <Button
@@ -1786,17 +1788,17 @@ function TicketGraphicCard({
                 <ClippedDescription text={graphic.description} className="text-sm text-muted-foreground" maxChars={125} />
 
                 <div className="relative h-56 w-full overflow-hidden rounded-md border bg-muted">
-                    {active?.imageUrl ? (
+                    {displayImageUrl ? (
                         <FullscreenImageDialog
                             title={`${graphic.fileName} (${selectedVersion})`}
-                            imageUrl={active.imageUrl}
+                            imageUrl={displayImageUrl}
                             trigger={
                                 <button
                                     type="button"
                                     className="group relative block h-full w-full cursor-zoom-in overflow-hidden"
                                     aria-label={`Open ${graphic.fileName} fullscreen`}
                                 >
-                                    <Image src={active.imageUrl} alt={graphic.title} fill className="object-contain" unoptimized />
+                                    <Image src={displayImageUrl} alt={graphic.title} fill className="object-contain" unoptimized />
                                     <span className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-md bg-background/85 text-foreground opacity-0 shadow-sm transition group-hover:opacity-100">
                                         <Expand className="h-4 w-4" />
                                     </span>
