@@ -31,8 +31,8 @@ export const ROUTE_POLICY: Record<RouteKey, AccessRole[]> = {
     mybuilds: ["VIEWER"],
     viewallbuilds: ["ADMIN", "DEV", "MANAGER"],
     graphicprojects: ["ADMIN", "MANAGER"],
-    graphicprojectaccess: ["ADMIN", "MANAGER"],
-    createticket: ["ADMIN", "MANAGER"],
+    graphicprojectaccess: ["ADMIN", "MANAGER", "REVIEWER"],
+    createticket: ["ADMIN", "MANAGER", "REVIEWER"],
     viewtickets: ["ADMIN", "MANAGER", "DESIGNER", "REVIEWER"],
     profileselection: ["ADMIN", "MANAGER", "DEV", "VIEWER", "DESIGNER", "REVIEWER"],
 };

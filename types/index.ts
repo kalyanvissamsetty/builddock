@@ -12,6 +12,7 @@ export type Me = {
   id: number;
   email: string;
   name: string | null;
+  emailNotificationsEnabled?: boolean;
   role?: Role;
   moduleAccess?: {
     module: ReviewDomain;

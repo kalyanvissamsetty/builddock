@@ -47,16 +47,18 @@ const PROFILES: Profile[] = [
     },
 ];
 
-function getGreetingName(name: string | null | undefined, email: string | undefined) {
+export function getGreetingName(
+    name: string | null | undefined,
+    email: string | undefined
+) {
     const fallback = "there";
     const source = name?.trim() || email?.split("@")[0] || fallback;
 
-    return source
-        .replace(/[._-]+/g, " ")
-        .split(" ")
-        .filter(Boolean)
-        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-        .join(" ") || fallback;
+    const formattedSource = source.replace(/[._-]+/g, " ").trim();
+
+    return formattedSource
+        ? formattedSource.charAt(0).toUpperCase() + formattedSource.slice(1)
+        : fallback;
 }
 
 function ProfileCard({ profile, href }: { profile: Profile; href: string }) {

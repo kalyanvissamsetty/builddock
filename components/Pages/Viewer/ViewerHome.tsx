@@ -9,6 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/auth/useAuth";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 
+import { getGreetingName } from "../GraphicReviews/ProfileSelectionPage";
+import React from "react";
+
 type ExtendedAssignedBuild = AssignedBuild & {
   // optional fields from backend (safe if not present)
   version: AssignedBuild["version"] & {
@@ -22,7 +25,7 @@ export default function ViewerHome() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { me } = useAuth();
-
+  const greetingName = React.useMemo(() => getGreetingName(me?.name, me?.email), [me]);
   useEffect(() => {
     loadBuilds();
   }, []);
@@ -60,7 +63,7 @@ export default function ViewerHome() {
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold">My Assigned Builds</h1>
         <p className="text-sm text-muted-foreground">
-          Hi <b>{me?.name}</b>, you can access only the builds assigned to you.
+          Hi <b>{greetingName}</b>, you can access only the builds assigned to you.
         </p>
       </div>
 

@@ -41,7 +41,7 @@ export default function AuthRoutesLayout({ children }: { children: React.ReactNo
   const activeRole = me ? getDomainRole(me, selectedDomain) : null;
   const shouldUseCompactNavbar =
     (selectedDomain === "WEBGL" && activeRole === "VIEWER") ||
-    (selectedDomain === "GRAPHICS" && (activeRole === "REVIEWER" || activeRole === "DESIGNER"));
+    (selectedDomain === "GRAPHICS" && activeRole === "DESIGNER");
 
   useEffect(() => {
     document.title = titleForRoute(pathname, selectedDomain);

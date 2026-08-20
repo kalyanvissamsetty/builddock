@@ -72,7 +72,7 @@ export default function GraphicProjectAccessPage() {
         setLoading(true);
         try {
             const [usersData, projectsData, accessData] = await Promise.all([
-                apiFetch<User[]>("/api/admin/users?module=GRAPHICS"),
+                apiFetch<User[]>("/api/graphics/assignable-users"),
                 apiFetch<Project[]>("/api/graphics/projects"),
                 apiFetch<GraphicTicketAccess[]>("/api/graphics/ticket-access"),
             ]);

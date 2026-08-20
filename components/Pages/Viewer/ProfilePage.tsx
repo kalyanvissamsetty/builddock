@@ -15,12 +15,14 @@ import { useRouter } from "next/navigation";
 import { getDefaultRouteForDomain, useSelectedDomain } from "@/components/auth/domain";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 type ProfileResponse = {
     id: number;
     name: string;
     email: string;
     role: string;
     hasPassword: boolean;
+    emailNotificationsEnabled: boolean;
 };
 
 function validatePassword(password: string) {
@@ -97,6 +99,7 @@ export function ProfilePage() {
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [hasPassword, setHasPassword] = useState(true);
+    const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(true);
 
     const [oldPassword, setOldPassword] = useState("");
     const [newPassword, setNewPassword] = useState("");
@@ -116,6 +119,7 @@ export function ProfilePage() {
                 setName(data.name ?? "");
                 setEmail(data.email ?? "");
                 setHasPassword(data.hasPassword);
+                setEmailNotificationsEnabled(data.emailNotificationsEnabled ?? true);
                 
             } catch (error) {
                 console.error(error);
@@ -156,7 +160,7 @@ export function ProfilePage() {
 
             const data: any = await apiFetch("/api/profile", {
                 method: "PATCH",
-                body: JSON.stringify({ name: trimmedName }),
+                body: JSON.stringify({ name: trimmedName, emailNotificationsEnabled }),
             });
 
             await refreshMe();
@@ -282,6 +286,20 @@ export function ProfilePage() {
                                 <span className="text-sm text-muted-foreground">No domain access assigned</span>
                             )}
                         </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-4 rounded-md border bg-muted/20 px-3 py-3">
+                        <div className="space-y-1">
+                            <label className="text-sm font-medium">Email notifications</label>
+                            <p className="text-xs text-muted-foreground">
+                                Receive ticket assignment, comment, and new graphic version emails.
+                            </p>
+                        </div>
+                        <Switch
+                            checked={emailNotificationsEnabled}
+                            onCheckedChange={setEmailNotificationsEnabled}
+                            aria-label="Toggle email notifications"
+                        />
                     </div>
 
                     <Button

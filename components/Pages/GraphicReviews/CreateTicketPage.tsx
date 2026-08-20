@@ -46,6 +46,7 @@ type Ticket = {
     id: number;
     title: string;
     description?: string | null;
+    deliveryDate?: string | null;
     createdAt: string;
     graphicData?: { project?: Project };
 };
@@ -67,6 +68,19 @@ function errorMessage(error: unknown, fallback: string) {
 }
 
 const MAX_REFERENCE_FILE_SIZE = 50 * 1024 * 1024;
+
+function todayDateInputValue() {
+    const today = new Date();
+    const offsetMs = today.getTimezoneOffset() * 60 * 1000;
+    return new Date(today.getTime() - offsetMs).toISOString().slice(0, 10);
+}
+
+function futureDateInputValue(yearsAhead: number) {
+    const date = new Date();
+    date.setFullYear(date.getFullYear() + yearsAhead);
+    const offsetMs = date.getTimezoneOffset() * 60 * 1000;
+    return new Date(date.getTime() - offsetMs).toISOString().slice(0, 10);
+}
 
 function MultiReferenceDropzone({
     files,
@@ -247,6 +261,7 @@ export default function CreateTicketPage() {
     const [projectId, setProjectId] = React.useState<number | null>(null);
     const [title, setTitle] = React.useState("");
     const [description, setDescription] = React.useState("");
+    const [deliveryDate, setDeliveryDate] = React.useState("");
     const [files, setFiles] = React.useState<File[]>([]);
     const [fileProgress, setFileProgress] = React.useState<FileUploadProgress[]>([]);
     const [assigneeIds, setAssigneeIds] = React.useState<number[]>([]);
@@ -257,7 +272,7 @@ export default function CreateTicketPage() {
         try {
             const [projectsData, usersData] = await Promise.all([
                 apiFetch<Project[]>("/api/graphics/projects"),
-                apiFetch<User[]>("/api/admin/users?module=GRAPHICS"),
+                apiFetch<User[]>("/api/graphics/assignable-users"),
             ]);
             setProjects(Array.isArray(projectsData) ? projectsData : []);
             setAssignableUsers(Array.isArray(usersData) ? usersData.filter((user) => user.role === "REVIEWER" || user.role === "DESIGNER") : []);
@@ -288,12 +303,14 @@ export default function CreateTicketPage() {
     const overallUploadPercent = fileProgress.length > 0
         ? Math.round(fileProgress.reduce((sum, item) => sum + item.percent, 0) / fileProgress.length)
         : 0;
+    const minDeliveryDate = React.useMemo(() => todayDateInputValue(), []);
+    const maxDeliveryDate = React.useMemo(() => futureDateInputValue(5), []);
 
     function updateFileProgress(index: number, patch: Partial<FileUploadProgress>) {
         setFileProgress((current) => current.map((item, idx) => idx === index ? { ...item, ...patch } : item));
     }
 
-    async function createTicket(input: { title: string; description?: string; assigneeIds?: number[] }) {
+    async function createTicket(input: { title: string; description?: string; deliveryDate?: string; assigneeIds?: number[] }) {
         if (!projectId) return;
 
         const created = await apiFetch<Ticket>("/api/graphics/tickets", {
@@ -320,12 +337,20 @@ export default function CreateTicketPage() {
             toast.error("Click Add to include the selected assignee, or clear the assignee field");
             return;
         }
-
+        if (deliveryDate && deliveryDate < minDeliveryDate) {
+            toast.error("Delivery date cannot be in the past");
+            return;
+        }
+        if (deliveryDate && deliveryDate > maxDeliveryDate) {
+            toast.error("Delivery date must be within the next 5 years");
+            return;
+        }
         setUploading(true);
         try {
             const ticket = await createTicket({
                 title: ticketTitle,
                 description: description.trim() || undefined,
+                deliveryDate: deliveryDate || undefined,
                 assigneeIds,
             });
 
@@ -389,6 +414,7 @@ export default function CreateTicketPage() {
             toast.success(files.length > 0 ? "Ticket created and references uploaded" : "Ticket created successfully");
             setTitle("");
             setDescription("");
+            setDeliveryDate("");
             setFiles([]);
             setFileProgress([]);
             setAssigneeIds([]);
@@ -429,7 +455,7 @@ export default function CreateTicketPage() {
                 </CardHeader>
 
                 <CardContent className="space-y-5">
-                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(180px,0.55fr)]">
                         <div className="space-y-2">
                             <Label>Project</Label>
                             <div className="flex gap-2">
@@ -471,6 +497,31 @@ export default function CreateTicketPage() {
                                 onChange={(event) => setTitle(event.target.value)}
                                 placeholder="e.g. Landing page banner review"
                                 maxLength={MAX_NAME_LENGTH}
+                                disabled={uploading}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>Delivery date</Label>
+                            <Input
+                                type="date"
+                                value={deliveryDate}
+                                min={minDeliveryDate}
+                                max={maxDeliveryDate}
+                                clearable={false}
+                                onClick={(event) => event.currentTarget.showPicker?.()}
+                                onKeyDown={(event) => {
+                                    if (event.key !== "Tab") event.preventDefault();
+                                }}
+                                onPaste={(event) => event.preventDefault()}
+                                onDrop={(event) => event.preventDefault()}
+                                onWheel={(event) => event.currentTarget.blur()}
+                                onChange={(event) => {
+                                    const nextDate = event.target.value;
+                                    if (!nextDate || (nextDate >= minDeliveryDate && nextDate <= maxDeliveryDate)) {
+                                        setDeliveryDate(nextDate);
+                                    }
+                                }}
                                 disabled={uploading}
                             />
                         </div>
@@ -591,6 +642,7 @@ export default function CreateTicketPage() {
                                 setProjectId(null);
                                 setTitle("");
                                 setDescription("");
+                                setDeliveryDate("");
                                 setFiles([]);
                                 setFileProgress([]);
                                 setAssigneeIds([]);

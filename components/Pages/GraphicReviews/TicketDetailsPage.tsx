@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, Download, Expand, FileText, History, Loader2, Trash2, UploadCloud } from "lucide-react";
+import { ArrowLeft, CalendarDays, Download, Expand, FileText, History, Loader2, Trash2, UploadCloud } from "lucide-react";
 import { apiFetch, getApiBase, refreshAuthSession, uploadFormDataWithProgress } from "@/components/lib/api";
 import { useAuth } from "@/components/auth/useAuth";
 import { getDefaultRouteForDomain, getDomainRole } from "@/components/auth/domain";
@@ -74,7 +74,7 @@ type GraphicVersion = {
 };
 type TicketGraphic = { id: number; fileName: string; title: string; description?: string | null; versions: GraphicVersion[] };
 type GraphicTicketStatus = "OPEN" | "IN_REVIEW" | "CHANGES_REQUESTED" | "APPROVED" | "CLOSED";
-type TicketAccess = { canView: boolean; accessScope: "ASSIGNED" | "ALL" | null };
+type TicketAccess = { canView: boolean; accessScope: "ASSIGNED" | "ALL" | "CREATED" | null };
 type TicketReference = {
     id: number;
     originalFileName: string;
@@ -99,6 +99,7 @@ type Ticket = {
     id: number;
     title: string;
     description?: string | null;
+    deliveryDate?: string | null;
     status?: GraphicTicketStatus;
     currentUserTicketAccess?: TicketAccess;
     graphicData?: { project?: { id: number; name: string; slug: string } };
@@ -228,6 +229,14 @@ function formatLocalDateTime(value: string) {
         minute: "2-digit",
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     }).format(date);
+}
+
+function formatLocalDate(value: string) {
+    return new Date(value).toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+    });
 }
 
 function formatFileSize(value?: number | null) {
@@ -1213,6 +1222,7 @@ export default function TicketDetailsPage() {
     }
 
     const canViewTicket = ticket.currentUserTicketAccess?.canView !== false;
+    const isTicketCreator = ticket.currentUserTicketAccess?.accessScope === "CREATED";
     const canUpdateStatus = canViewTicket && (
         graphicsRole === "ADMIN" ||
         graphicsRole === "MANAGER" ||
@@ -1222,11 +1232,13 @@ export default function TicketDetailsPage() {
     const canUpload = canViewTicket && (
         graphicsRole === "ADMIN" ||
         graphicsRole === "MANAGER" ||
-        graphicsRole === "DESIGNER"
+        graphicsRole === "DESIGNER" ||
+        isTicketCreator
     );
     const canDeleteTicket = canViewTicket && (
         graphicsRole === "ADMIN" ||
-        graphicsRole === "MANAGER"
+        graphicsRole === "MANAGER" ||
+        isTicketCreator
     );
     const canDeleteReferences = canViewTicket && (
         graphicsRole === "ADMIN" ||
@@ -1246,6 +1258,12 @@ export default function TicketDetailsPage() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0 flex-1 space-y-1">
                     <h1 className="text-2xl font-semibold">{ticket.title}</h1>
+                    {ticket.deliveryDate ? (
+                        <p className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground">
+                            <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                            Delivery date: {formatLocalDate(ticket.deliveryDate)}
+                        </p>
+                    ) : null}
                     <p className="text-sm text-muted-foreground">
                         {ticket.graphicData?.project?.name ?? "Graphics project"} • Ticket #{ticket.id}
                     </p>
