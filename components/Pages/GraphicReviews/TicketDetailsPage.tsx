@@ -1061,6 +1061,17 @@ export default function TicketDetailsPage() {
         }
     }
 
+    const loadMentionUsers = React.useCallback(async () => {
+        if (!ticketId) return;
+
+        try {
+            const data = await apiFetch<MentionableUser[]>(`/api/graphics/tickets/${ticketId}/comment-participants`);
+            setMentionUsers(Array.isArray(data) ? data : []);
+        } catch {
+            setMentionUsers([]);
+        }
+    }, [ticketId]);
+
     React.useEffect(() => {
         loadTicket();
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1079,6 +1090,7 @@ export default function TicketDetailsPage() {
             if (refreshTimer) clearTimeout(refreshTimer);
             refreshTimer = setTimeout(() => {
                 loadTicket({ showPageLoading: false });
+                loadMentionUsers();
             }, 250);
         }
 
@@ -1100,26 +1112,13 @@ export default function TicketDetailsPage() {
             eventSource.close();
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [ticketId, Boolean(ticket)]);
+    }, [ticketId, Boolean(ticket), loadMentionUsers]);
 
     React.useEffect(() => {
         if (!ticketId) return;
 
-        let cancelled = false;
-        async function loadMentionUsers() {
-            try {
-                const data = await apiFetch<MentionableUser[]>(`/api/graphics/tickets/${ticketId}/comment-participants`);
-                if (!cancelled) setMentionUsers(Array.isArray(data) ? data : []);
-            } catch {
-                if (!cancelled) setMentionUsers([]);
-            }
-        }
-
         loadMentionUsers();
-        return () => {
-            cancelled = true;
-        };
-    }, [ticketId]);
+    }, [ticketId, loadMentionUsers]);
 
     if (loading) {
         return (
