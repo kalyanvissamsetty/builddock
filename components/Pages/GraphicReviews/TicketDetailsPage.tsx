@@ -553,8 +553,7 @@ function AddCommentDialog({
                 const label = mentionLabel(user).toLowerCase();
                 const email = user.email.toLowerCase();
                 return !activeMention.query || label.includes(activeMention.query) || email.includes(activeMention.query);
-            })
-            .slice(0, 8);
+            });
     }, [activeMention, mentionUsers]);
 
     function closeDialog() {
