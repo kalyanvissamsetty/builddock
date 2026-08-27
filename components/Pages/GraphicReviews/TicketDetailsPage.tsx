@@ -555,6 +555,20 @@ function AddCommentDialog({
                 return !activeMention.query || label.includes(activeMention.query) || email.includes(activeMention.query);
             });
     }, [activeMention, mentionUsers]);
+    const groupedMentionOptions = React.useMemo(() => {
+        const groups = [
+            { key: "DESIGNER", label: "Designers" },
+            { key: "REVIEWER", label: "Reviewers" },
+            { key: "MANAGER", label: "Managers" },
+        ];
+
+        return groups
+            .map((group) => ({
+                ...group,
+                users: mentionOptions.filter((user) => user.roleKey === group.key),
+            }))
+            .filter((group) => group.users.length > 0);
+    }, [mentionOptions]);
 
     function closeDialog() {
         setText("");
@@ -618,22 +632,29 @@ function AddCommentDialog({
                     />
                     {mentionOptions.length > 0 && (
                         <div className="absolute left-2 top-12 z-50 max-h-52 w-[min(320px,calc(100%-1rem))] overflow-y-auto rounded-md border bg-background p-1 shadow-lg">
-                            {mentionOptions.map((user) => (
-                                <button
-                                    key={user.id}
-                                    type="button"
-                                    className="flex w-full min-w-0 items-center justify-between gap-3 rounded-sm px-3 py-2 text-left text-sm hover:bg-muted"
-                                    onMouseDown={(event) => {
-                                        event.preventDefault();
-                                        insertMention(user);
-                                    }}
-                                >
-                                    <span className="min-w-0">
-                                        <span className="block truncate font-medium">{mentionLabel(user)}</span>
-                                        <span className="block truncate text-xs text-muted-foreground">{user.email}</span>
-                                    </span>
-                                    <Badge variant="outline" className="shrink-0">{roleLabel(user.roleKey)}</Badge>
-                                </button>
+                            {groupedMentionOptions.map((group) => (
+                                <div key={group.key} className="py-1 first:pt-0">
+                                    <div className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                        {group.label}
+                                    </div>
+                                    {group.users.map((user) => (
+                                        <button
+                                            key={user.id}
+                                            type="button"
+                                            className="flex w-full min-w-0 items-center justify-between gap-3 rounded-sm px-3 py-2 text-left text-sm hover:bg-muted"
+                                            onMouseDown={(event) => {
+                                                event.preventDefault();
+                                                insertMention(user);
+                                            }}
+                                        >
+                                            <span className="min-w-0">
+                                                <span className="block truncate font-medium">{mentionLabel(user)}</span>
+                                                <span className="block truncate text-xs text-muted-foreground">{user.email}</span>
+                                            </span>
+                                            <Badge variant="outline" className="shrink-0">{roleLabel(user.roleKey)}</Badge>
+                                        </button>
+                                    ))}
+                                </div>
                             ))}
                         </div>
                     )}
